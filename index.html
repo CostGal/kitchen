@@ -1,0 +1,1120 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Kitchen">
+<meta name="theme-color" content="#000000">
+<meta name="format-detection" content="telephone=no">
+<title>Kitchen</title>
+<!-- Relative hrefs: served under /kitchen/ on GitHub Pages and at a root locally. -->
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png" type="image/png">
+<style>
+  :root{
+    --bg:#000; --card:#141413; --card2:#1D1D1B; --rule:#2C2C29;
+    --ink:#EFEFED; --ink2:#8C8C86; --acc:#D97757; --acc-soft:#2B1A14; --acc-line:#3A241B;
+    --bad:#E5484D; --bad-soft:#2B1214;
+    --ok:#8FAE72;            /* used for one thing only: a ticked shopping line */
+    --fut:"Futura","Futura PT","Avenir Next",Avenir,"Century Gothic",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; touch-action:manipulation}
+  html{background:var(--bg); -webkit-text-size-adjust:100%}
+  body{
+    margin:0;
+    padding:calc(env(safe-area-inset-top) + 18px)
+            calc(env(safe-area-inset-right) + 16px)
+            calc(env(safe-area-inset-bottom) + 96px)
+            calc(env(safe-area-inset-left) + 16px);
+    background:var(--bg); color:var(--ink);
+    font-family:var(--fut); font-size:16px; line-height:1.45; letter-spacing:.005em;
+    max-width:560px; margin-inline:auto;
+    -webkit-font-smoothing:antialiased; overscroll-behavior-y:none;
+  }
+  h1,h2,h3{margin:0; font-weight:500}
+  button{font-family:inherit; -webkit-user-select:none; user-select:none; cursor:pointer; color:var(--ink)}
+  button:active{opacity:.65}
+  input,select,textarea{font-family:inherit; font-size:16px; color:var(--ink); background:var(--card2); border:1px solid var(--rule); border-radius:10px}
+  input,select,textarea{padding:11px 12px; width:100%; min-width:0}
+  textarea{line-height:1.5; resize:vertical}
+  ::placeholder{color:#5E5E57}
+
+  .topbar{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px}
+  .topbar h1{font-size:22px; letter-spacing:.06em; text-transform:uppercase; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .nav{display:flex; gap:6px; flex:none; align-items:center}
+  .nav button{font-size:15px; min-height:44px; padding:0 14px; color:var(--ink2); line-height:1;
+    background:var(--card); border:1px solid var(--rule); border-radius:10px}
+  .nav button.pri{color:var(--acc); border-color:var(--acc-line); background:var(--acc-soft)}
+  .nav button.ico-only{width:46px; padding:0; display:flex; align-items:center; justify-content:center; font-size:18px}
+
+  .status{margin:0 0 22px; padding:15px 16px; background:var(--card);
+    border:1px solid var(--rule); border-left:3px solid var(--acc);
+    border-radius:10px; font-size:15px; line-height:1.55; color:var(--ink2)}
+  .status b{color:var(--ink); font-weight:500}
+
+  section{margin-bottom:32px}
+  .head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:13px; padding-bottom:9px; border-bottom:1px solid var(--rule)}
+  .head h2{font-size:13px; letter-spacing:.16em; color:var(--ink2); text-transform:uppercase; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .head .sub{flex:none; font-size:13px; color:var(--ink2)}
+  .head button.link{flex:none; background:none; border:0; padding:4px 0; font-size:13px; color:var(--acc); min-height:32px}
+
+  .form{display:flex; flex-direction:column; gap:14px; padding:16px; background:var(--card); border:1px solid var(--rule); border-radius:12px; margin-bottom:16px}
+  .form.editing{border-color:var(--acc)}
+  .form label{min-width:0; font-size:12.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink2); display:flex; flex-direction:column; gap:6px}
+  .quick{display:flex; flex-wrap:wrap; gap:6px}
+  .quick button{min-height:40px; padding:0 13px; font-size:14px; color:var(--ink2); background:var(--card2); border:1px solid var(--rule); border-radius:20px}
+  .quick button.on{color:var(--acc); border-color:var(--acc)}
+  .btnrow{display:flex; gap:8px}
+  .btnrow button{flex:1; min-height:50px; font-size:15px; background:var(--card2); border:1px solid var(--rule); border-radius:11px}
+  .btnrow button.pri{background:var(--acc); border-color:var(--acc); color:#100E0D}
+  .btnrow button.danger{flex:none; padding:0 16px; color:var(--bad); border-color:#4A2325}
+  /* Links to the sibling apps, wearing the secondary button's clothes. */
+  .btnrow a{flex:1; min-height:50px; display:flex; align-items:center; justify-content:center;
+    font-size:15px; background:var(--card2); border:1px solid var(--rule);
+    border-radius:11px; color:var(--ink); text-decoration:none}
+  .mut{font-size:13px; color:var(--ink2); line-height:1.5}
+  .msg{font-size:13.5px; color:var(--acc); min-height:18px; margin:4px 0 0}
+  .msg.err{color:var(--bad)}
+  .empty{padding:18px 0; color:var(--ink2); font-size:14px; line-height:1.55}
+
+  .stepper{display:flex; align-items:center; gap:6px}
+  .stepper button{flex:none; width:44px; height:46px; font-size:20px; background:var(--card2); border:1px solid var(--rule); border-radius:10px; color:var(--ink2)}
+  .stepper .val{flex:1; min-width:0; text-align:center; font-size:19px; white-space:nowrap}
+  .stepper .val small{font-size:13px; color:var(--ink2); margin-left:4px}
+
+  /* --- recipe cards --- */
+  .cards{display:flex; flex-direction:column; gap:10px}
+  .card{display:flex; align-items:center; gap:12px; padding:12px 14px; text-align:left; width:100%;
+    background:var(--card); border:1px solid var(--rule); border-radius:12px; min-height:64px}
+  .card.on{border-color:var(--acc-line); background:var(--acc-soft)}
+  .card .thumb{flex:none; width:58px; height:44px; border-radius:8px; object-fit:cover; background:var(--card2); display:block}
+  .card .thumb.none{display:flex; align-items:center; justify-content:center; color:#4A4A45; font-size:19px}
+  .card .txt{flex:1; min-width:0}
+  .card .txt b{display:block; font-weight:500; font-size:15.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .card .txt small{display:block; font-size:12.5px; color:var(--ink2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px}
+  .card .add{flex:none; width:40px; height:40px; border-radius:10px; font-size:18px; line-height:1;
+    background:var(--card2); border:1px solid var(--rule); color:var(--ink2);
+    display:flex; align-items:center; justify-content:center}
+  .card .add.on{background:var(--acc); border-color:var(--acc); color:#100E0D}
+
+  /* --- video: a flat thumbnail in our own styling, swapped for the real
+         player only once tapped. No API key, no quota, nothing loads from
+         YouTube until you ask for it. --- */
+  .vid{position:relative; width:100%; aspect-ratio:16/9; border-radius:12px; overflow:hidden;
+    background:var(--card2); border:1px solid var(--rule); margin-bottom:16px; cursor:pointer}
+  .vid img{width:100%; height:100%; object-fit:cover; display:block; opacity:.62}
+  .vid iframe{width:100%; height:100%; border:0; display:block}
+  .vid .play{position:absolute; inset:0; margin:auto; width:62px; height:62px; border-radius:50%;
+    background:rgba(0,0,0,.55); border:1px solid rgba(239,239,237,.5); color:var(--ink);
+    display:flex; align-items:center; justify-content:center; font-size:24px; padding-left:4px}
+  .vid:active img{opacity:.5}
+
+  /* --- ingredient picker --- */
+  .picker{position:relative}
+  .sugg{position:absolute; left:0; right:0; top:calc(100% + 5px); z-index:15; max-height:266px; overflow-y:auto;
+    background:var(--card2); border:1px solid var(--rule); border-radius:11px;
+    box-shadow:0 12px 34px rgba(0,0,0,.6); -webkit-overflow-scrolling:touch}
+  .sugg button{display:flex; align-items:center; gap:10px; width:100%; text-align:left; min-height:46px;
+    padding:0 13px; font-size:15px; background:none; border:0; border-bottom:1px solid var(--rule)}
+  .sugg button:last-child{border-bottom:0}
+  .sugg button .nm{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .sugg button .al{flex:none; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink2)}
+  .sugg button.new{color:var(--acc)}
+
+  .ings{display:flex; flex-direction:column; gap:7px; margin-top:12px}
+  .ing{display:flex; align-items:center; gap:6px}
+  .ing .q{flex:none; width:66px; text-align:center; padding:9px 4px}
+  .ing .u{flex:none; width:60px; text-align:center; padding:9px 4px; font-size:14px}
+  .ing .nm{flex:1; min-width:0; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .ing .x{flex:none; width:38px; height:42px; font-size:19px; line-height:1; color:var(--ink2);
+    background:none; border:1px solid transparent; border-radius:9px}
+
+  /* --- recipe detail --- */
+  .meta{display:flex; flex-wrap:wrap; gap:6px 14px; font-size:13px; color:var(--ink2); margin-bottom:18px}
+  .meta span{display:inline-flex; align-items:center; gap:6px}
+  .row{display:flex; align-items:center; gap:12px; padding:12px 2px; border-bottom:1px solid var(--rule)}
+  .row:last-child{border-bottom:0}
+  .row .nm{flex:1; min-width:0; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .row .v{flex:none; text-align:right; font-size:15px; color:var(--ink2)}
+  .row .v b{color:var(--ink); font-weight:500}
+  ol.steps{margin:0; padding:0 0 0 2px; list-style:none; counter-reset:s}
+  ol.steps li{counter-increment:s; display:flex; gap:13px; padding:12px 0; border-bottom:1px solid var(--rule); font-size:15px; line-height:1.55}
+  ol.steps li:last-child{border-bottom:0}
+  ol.steps li::before{content:counter(s); flex:none; width:25px; height:25px; margin-top:2px; border-radius:50%;
+    background:var(--card2); border:1px solid var(--rule); color:var(--ink2);
+    font-size:12.5px; display:flex; align-items:center; justify-content:center}
+
+  /* --- shopping list --- */
+  .aisle{font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink2);
+    margin:22px 0 4px; padding-bottom:7px; border-bottom:1px solid var(--rule)}
+  .aisle:first-child{margin-top:0}
+  .shop{display:flex; align-items:center; gap:12px; width:100%; min-width:0; text-align:left; min-height:52px;
+    padding:9px 2px; background:none; border:0; border-bottom:1px solid var(--rule)}
+  /* A one-off item carries its own × alongside the tick target, so the rule
+     moves to the wrapper and the two buttons stay siblings, not nested. */
+  .shopline{display:flex; align-items:center; border-bottom:1px solid var(--rule)}
+  .shopline .shop{flex:1; border-bottom:0}
+  .shopline .x{flex:none; width:40px; height:44px; font-size:19px; line-height:1; color:var(--ink2);
+    background:none; border:1px solid transparent; border-radius:9px}
+  .shop .box{flex:none; width:24px; height:24px; border-radius:7px; border:1.5px solid var(--rule);
+    display:flex; align-items:center; justify-content:center; font-size:13px; color:transparent}
+  .shop .nm{flex:1; min-width:0; font-size:15.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .shop .nm small{display:block; font-size:12px; color:var(--ink2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .shop .q{flex:none; font-size:15px; color:var(--acc); text-align:right}
+  .shop.done .box{border-color:var(--ok); background:var(--ok); color:#0E120A}
+  .shop.done .nm{color:var(--ink2); text-decoration:line-through}
+  .shop.done .q{color:var(--ink2); text-decoration:line-through}
+
+  /* --- cook mode: one step, big, screen held awake --- */
+  .cook{position:fixed; inset:0; z-index:50; background:var(--bg); display:flex; flex-direction:column;
+    padding:calc(env(safe-area-inset-top) + 16px)
+            calc(env(safe-area-inset-right) + 20px)
+            calc(env(safe-area-inset-bottom) + 16px)
+            calc(env(safe-area-inset-left) + 20px)}
+  .cook .bar{display:flex; align-items:center; justify-content:space-between; gap:12px; flex:none}
+  .cook .bar .n{font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink2)}
+  .cook .bar button{background:none; border:0; color:var(--ink2); font-size:22px; line-height:1; min-height:44px; padding:0 4px}
+  .cook .body{flex:1; min-height:0; overflow-y:auto; display:flex; align-items:center;
+    -webkit-overflow-scrolling:touch}
+  .cook .body p{margin:0; font-size:26px; line-height:1.4; letter-spacing:.01em; max-width:520px}
+  .cook .ticks{display:flex; gap:4px; flex:none; margin-bottom:18px}
+  .cook .ticks i{flex:1; height:3px; border-radius:2px; background:var(--rule)}
+  .cook .ticks i.on{background:var(--acc)}
+  .cook .btnrow{flex:none}
+
+  .tabbar{position:fixed; left:0; right:0; bottom:0; z-index:10; display:flex; justify-content:center; gap:6px;
+    padding:10px 16px calc(env(safe-area-inset-bottom) + 10px);
+    background:rgba(0,0,0,.92); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
+    border-top:1px solid var(--rule)}
+  .tabbar button{flex:1 1 0; min-width:0; max-width:120px; min-height:48px; font-size:13.5px; letter-spacing:.02em;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    color:var(--ink2); background:none; border:1px solid transparent; border-radius:11px}
+  .tabbar button.on{color:var(--acc); background:var(--acc-soft); border-color:var(--acc-line)}
+  .tabbar button .dot{display:inline-block; min-width:17px; margin-left:5px; padding:0 4px; border-radius:9px;
+    background:var(--acc); color:#100E0D; font-size:11px; line-height:17px; vertical-align:1px}
+
+  .ico{display:inline-flex; align-items:center; justify-content:center; flex:none; color:currentColor}
+  .ico svg{width:1em; height:1em; display:block}
+
+  .auth{max-width:360px; margin:12vh auto 0; display:flex; flex-direction:column; gap:12px}
+  .auth h1{font-size:26px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:8px}
+  .authlink{background:none; border:none; padding:2px 0; align-self:flex-start; font-size:13.5px; color:var(--ink2); text-decoration:underline}
+  #toast{position:fixed; left:16px; right:16px; bottom:calc(env(safe-area-inset-bottom) + 84px); z-index:60;
+    background:var(--bad-soft); border:1px solid var(--bad); color:var(--ink); border-radius:11px;
+    padding:12px 14px; font-size:14px; display:none}
+  #toast.ok{background:var(--acc-soft); border-color:var(--acc)}
+  #load{position:fixed; left:0; top:0; height:2px; width:100%; z-index:70; background:var(--acc);
+    transform:scaleX(0); transform-origin:left; transition:transform .25s ease-out; pointer-events:none}
+  #load.on{transform:scaleX(.9)}
+  button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--acc); outline-offset:3px}
+</style>
+
+<div id="app"></div>
+<div id="load"></div>
+<div id="toast"></div>
+
+<script>
+/* Kitchen — recipes in, shopping list out.
+   Third app on Kostas's personal Supabase project, shared with Ledger
+   (entry_types/logs/reflections) and Overtime (ot_*). Every table here is
+   prefixed mp_ so the three can never collide. The key is publishable; RLS
+   (user_id = auth.uid()) on every mp_* table is the real gate. */
+const SB_URL='https://dgnxbcoxdpdloplkcmzs.supabase.co';
+const SB_KEY='sb_publishable_kXCrlX-9S1ud3bs9Zdyt1A_9n-U1X1F';
+/* ---------- shared session (Ledger · Overtime · Kitchen) ---------- */
+/* All three apps are served from costgal.github.io, so they share one
+   localStorage. The session is keyed by Supabase project rather than by app
+   name: signing into one signs you into all three, and a deploy pointed at a
+   different project — the beta — lands on a different key automatically, so a
+   tester's session can never be read as a sandbox one. Deriving the key from
+   SB_URL is what makes that true in every deploy without a flag to remember.
+   This block is identical in all three repos apart from OLD_SESS_KEY/APP_ID. */
+const SB_REF=(String(SB_URL).match(/\/\/([^.\/]+)\./)||[])[1]||'unknown';
+const SESS_KEY='costgal_session_'+SB_REF;
+const OLD_SESS_KEY='kitchen_session';   /* pre-unification; adopted once, below */
+const APP_ID='kitchen';
+const APPS=[['ledger','Ledger'],['overtime','Overtime'],['kitchen','Kitchen']];
+/* The siblings are one relative hop away only when this app is served from its
+   own /<name>/ path — true on costgal.github.io, and true locally if you serve
+   the folder that holds all three. A beta deploy sits at a host root, where
+   ../kitchen/ doesn't exist, so it gets no switcher and no shared-account copy. */
+const SIBLINGS = location.pathname.indexOf('/'+APP_ID+'/')===0
+  ? APPS.filter(a=>a[0]!==APP_ID) : [];
+const CHECK_KEY='kitchen_checked';
+
+/* ---------- utils ---------- */
+/* Stroke-only marks, sized in em so they inherit colour and size from whatever
+   they sit in. Constant markup — never user input. */
+const ICONS={
+  book :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A2.5 2.5 0 016.5 2H20v15H6.5A2.5 2.5 0 004 19.5z"/><path d="M4 19.5A2.5 2.5 0 016.5 17H20v5H6.5A2.5 2.5 0 014 19.5z"/></svg>',
+  play :'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 20v-2a4 4 0 00-3-3.87"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg>',
+  pot  :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18M4.5 9v8a3 3 0 003 3h9a3 3 0 003-3V9"/><path d="M8 6V3M16 6V3M12 6V4"/></svg>'
+};
+function icon(n){ const s=el('span',{class:'ico'}); s.innerHTML=ICONS[n]||''; return s; }
+function el(tag, props, ...kids){
+  const n=document.createElement(tag);
+  if(props) for(const k in props){
+    if(k==='class') n.className=props[k];
+    else if(k.slice(0,2)==='on') n[k]=props[k];
+    else if(k==='hidden'||k==='disabled'||k==='value'||k==='checked') n[k]=props[k];
+    else n.setAttribute(k, props[k]);
+  }
+  kids.flat().forEach(c=>{ if(c!=null && c!==false) n.appendChild(typeof c==='string'||typeof c==='number'?document.createTextNode(String(c)):c); });
+  return n;
+}
+/* Native replaceChildren() turns a null argument into the literal text "null".
+   Views here are full of `cond ? node : null`, so everything that swaps
+   children goes through this instead — same filtering rule as el(). */
+function fill(node, ...kids){
+  node.replaceChildren();
+  kids.flat().forEach(c=>{ if(c!=null && c!==false) node.appendChild(typeof c==='string'||typeof c==='number'?document.createTextNode(String(c)):c); });
+  return node;
+}
+function toast(m, ok){ const t=document.getElementById('toast'); t.textContent=m; t.className=ok?'ok':''; t.style.display='block';
+  clearTimeout(toast._x); toast._x=setTimeout(()=>t.style.display='none', ok?2200:4000); }
+let busyN=0;
+function busy(on){ busyN=Math.max(0, busyN+(on?1:-1)); document.getElementById('load').classList.toggle('on', busyN>0); }
+function norm(s){ return (s||'').trim().toLowerCase(); }
+/* Quantities are display-only: 2 decimals at most, no trailing zeros. */
+function num(n){ return String(Math.round((+n||0)*100)/100); }
+
+/* ---------- auth + api (same shape as Ledger and Overtime) ---------- */
+function sess(){ try{ return JSON.parse(localStorage.getItem(SESS_KEY)||'null'); }catch(e){ return null; } }
+function setSess(s){ try{ if(s) localStorage.setItem(SESS_KEY, JSON.stringify(s)); else localStorage.removeItem(SESS_KEY); }catch(e){} }
+/* Adopt this app's old per-app session once, so unifying doesn't sign anyone
+   out. Runs before anything reads sess(). */
+try{
+  if(!localStorage.getItem(SESS_KEY)){
+    const old=localStorage.getItem(OLD_SESS_KEY);
+    if(old) localStorage.setItem(SESS_KEY, old);
+  }
+  localStorage.removeItem(OLD_SESS_KEY);
+}catch(e){}
+async function authReq(path, body, method, token){
+  const h={apikey:SB_KEY,'Content-Type':'application/json'}; if(token) h.Authorization='Bearer '+token;
+  const r=await fetch(SB_URL+'/auth/v1/'+path,{method:method||'POST', headers:h, body:JSON.stringify(body)});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.msg||d.error_description||d.message||('Auth error '+r.status));
+  return d;
+}
+function recoveryFromHash(){
+  const p=new URLSearchParams(location.hash.replace(/^#/,''));
+  if(p.get('type')!=='recovery' || !p.get('access_token')) return null;
+  return {access_token:p.get('access_token'), refresh_token:p.get('refresh_token'), expires_in:+p.get('expires_in')||3600, token_type:'bearer'};
+}
+/* Wait for a sibling app's refresh to land in localStorage. Supabase rotates
+   the refresh token on every use, so with three apps on one token the second
+   one to refresh gets invalid_grant back — even though the first has just
+   minted a perfectly good session. Their write may not have happened yet when
+   our failure arrives, so this waits briefly rather than looking once. */
+function rotatedSession(spent, ms){
+  return new Promise(done=>{
+    const end=Date.now()+ms; let timer=null;
+    const fresh=()=>{ const s=sess(); return (s && s.refresh_token && s.refresh_token!==spent) ? s : null; };
+    function onStore(e){ if(e.key && e.key!==SESS_KEY) return; const s=fresh(); if(s) finish(s); }
+    function finish(v){ clearTimeout(timer); window.removeEventListener('storage', onStore); done(v); }
+    /* The storage event is the real signal — it arrives the moment the sibling
+       writes, even in a background tab, where setTimeout gets throttled to
+       seconds and would otherwise eat the whole budget in one tick. The poll
+       is only a backstop. */
+    window.addEventListener('storage', onStore);
+    (function look(){
+      const s=fresh(); if(s) return finish(s);
+      if(Date.now()>=end) return finish(null);
+      timer=setTimeout(look, 120);
+    })();
+  });
+}
+let refreshing=null;
+function refreshSession(){
+  if(refreshing) return refreshing;
+  refreshing=(async()=>{
+    try{
+      const s=sess(); if(!s||!s.refresh_token) throw new Error('signed out');
+      const spent=s.refresh_token;
+      try{
+        const d=await authReq('token?grant_type=refresh_token',{refresh_token:spent});
+        setSess(d); return d;
+      }catch(e){
+        /* Someone else may have spent our token a moment ago. Take their
+           session and carry on rather than dumping the user at sign-in. */
+        const other=await rotatedSession(spent, 2500);
+        if(other) return other;
+        /* Offline isn't signed out — don't throw the session away over a
+           dropped connection. */
+        e.offline = navigator.onLine===false
+          || /failed to fetch|networkerror|load failed/i.test(String(e.message||''));
+        throw e;
+      }
+    }
+    finally{ refreshing=null; }
+  })();
+  return refreshing;
+}
+async function api(path, opts, retry){
+  opts=opts||{}; if(retry===undefined) retry=true;
+  const s=sess(); if(!s) throw new Error('signed out');
+  const r=await fetch(SB_URL+'/rest/v1/'+path,{
+    method:opts.method||'GET',
+    headers:Object.assign({apikey:SB_KEY, Authorization:'Bearer '+s.access_token, 'Content-Type':'application/json'}, opts.headers||{}),
+    body:opts.body!==undefined?JSON.stringify(opts.body):undefined
+  });
+  if(r.status===401 && retry){
+    try{ await refreshSession(); }
+    catch(e){ if(!e.offline){ setSess(null); boot(); } throw e; }
+    return api(path,opts,false);
+  }
+  if(!r.ok){ const t=await r.text(); throw new Error('DB '+r.status+': '+t.slice(0,160)); }
+  if(r.status===204) return [];
+  const txt=await r.text(); return txt?JSON.parse(txt):[];
+}
+const REP={headers:{Prefer:'return=representation'}};
+
+/* ---------- aisles + units ---------- */
+/* Order is the walk through the shop, not the alphabet — the list is read
+   top to bottom while pushing a trolley. */
+const AISLES=[['produce','Fruit & veg'],['bakery','Bakery'],['meat','Meat'],['fish','Fish'],
+  ['dairy','Dairy & eggs'],['pantry','Pantry'],['frozen','Frozen'],['drinks','Drinks'],
+  ['household','Household'],['other','Other']];
+const AISLE_NAME=Object.fromEntries(AISLES);
+/* Only mass and volume convert. Everything else (tbsp, cloves, tins, bunches)
+   is summed per exact unit and shown side by side — "2 cloves + 1 tbsp" is
+   honest, whereas inventing a conversion between them is not. */
+const FAM={g:['g',1], kg:['g',1000], ml:['ml',1], l:['ml',1000], lt:['ml',1000]};
+const UNITS=['g','kg','ml','l','pcs','tbsp','tsp','clove','bunch','tin','pack','pinch'];
+function fmtAmount(qty, unit){
+  if(unit==='g'  && qty>=1000) return num(qty/1000)+' kg';
+  if(unit==='ml' && qty>=1000) return num(qty/1000)+' l';
+  if(unit==='pcs') return '× '+num(qty);
+  return num(qty)+' '+unit;
+}
+
+/* ---------- state ---------- */
+/* All of it is small — a few hundred rows ever — so it loads once at boot and
+   every calculation runs in memory. Mutate S, then render().
+   S.draft holds the half-finished recipe form for the same reason Overtime's
+   does: a background refetch must not throw away what you were typing. */
+const S={view:'recipes', recipes:[], ings:[], items:[], basket:[], extras:[],
+         recipe:null, servings:null, draft:null, cook:null, wake:null, ready:false};
+
+async function loadAll(){
+  const [items, recipes, ings, basket, extras]=await Promise.all([
+    api('mp_items?select=*&order=name.asc'),
+    api('mp_recipes?select=*&order=created_at.desc'),
+    api('mp_recipe_items?select=*&order=pos.asc'),
+    api('mp_basket?select=*'),
+    api('mp_extras?select=*&order=created_at.asc')
+  ]);
+  S.items=items; S.recipes=recipes; S.ings=ings; S.basket=basket; S.extras=extras;
+  if(!S.items.length) await seedItems();
+}
+
+/* A fresh account starts with a stocked catalogue so the very first recipe is
+   all tapping and no typing. Everything new you type joins it permanently. */
+const SEED=`
+produce|pcs|Onion,Red onion,Spring onion,Garlic,Potato,Sweet potato,Carrot,Courgette,Aubergine,Cucumber,Green pepper,Red pepper,Tomato,Lemon,Lime,Orange,Apple,Banana,Avocado,Leek,Celery
+produce|g|Spinach,Rocket,Green beans,Mushrooms,Cherry tomatoes,Broccoli,Cauliflower,Cabbage,Lettuce,Dill,Parsley,Mint,Basil,Olives
+meat|g|Chicken breast,Chicken thighs,Whole chicken,Pork chops,Pork fillet,Minced beef,Minced pork,Beef steak,Lamb,Bacon,Sausages
+fish|g|Salmon,Cod,Sea bass,Prawns,Calamari,Anchovies,Sardines,Tuna
+dairy|pcs|Eggs,Butter,Puff pastry,Filo pastry
+dairy|g|Feta,Parmesan,Graviera,Kefalotyri,Mozzarella,Halloumi,Yoghurt,Cream cheese
+dairy|ml|Milk,Cream
+bakery|pcs|Bread,Pita bread,Baguette,Tortillas,Bread rolls
+pantry|g|Flour,Sugar,Salt,Black pepper,Oregano,Paprika,Cumin,Cinnamon,Bay leaves,Rice,Pasta,Spaghetti,Orzo,Couscous,Bulgur,Lentils,Chickpeas,Beans,Breadcrumbs,Walnuts,Almonds,Raisins,Baking powder
+pantry|ml|Olive oil,Sunflower oil,Red wine vinegar,Balsamic vinegar,Soy sauce,White wine,Red wine,Passata,Stock,Honey,Tahini
+pantry|pcs|Tinned tomatoes,Tomato paste,Stock cube,Mustard,Mayonnaise,Ketchup,Peanut butter,Jam
+frozen|g|Frozen peas,Frozen spinach,Frozen chips,Ice cream,Frozen berries
+drinks|pcs|Water,Sparkling water,Orange juice,Beer,Wine,Cola,Coffee,Tea
+household|pcs|Bin bags,Kitchen roll,Washing up liquid,Foil,Cling film,Baking paper,Sponges,Toilet paper,Detergent`;
+async function seedItems(){
+  const rows=[];
+  SEED.trim().split('\n').forEach(line=>{
+    const [aisle, unit, names]=line.split('|');
+    names.split(',').forEach(n=>rows.push({name:n.trim(), aisle:aisle, unit:unit}));
+  });
+  try{ S.items=await api('mp_items',{method:'POST', body:rows, headers:REP.headers}); S.items.sort(byName); }
+  catch(e){ /* Not worth blocking a boot over — you can still type names by hand. */ }
+}
+function byName(a,b){ return norm(a.name)<norm(b.name)?-1:1; }
+function recipeById(id){ return S.recipes.find(r=>r.id===id)||null; }
+function ingsOf(id){ return S.ings.filter(i=>i.recipe_id===id); }
+function itemByName(n){ const k=norm(n); return S.items.find(i=>norm(i.name)===k)||null; }
+function inBasket(id){ return S.basket.find(b=>b.recipe_id===id)||null; }
+/* How often each catalogue item actually appears in your recipes. Derived, not
+   stored — the recipes are already in memory, so a counter column would be a
+   second source of truth for no gain. */
+function useCounts(){
+  const m=new Map();
+  for(const i of S.ings){ const k=norm(i.name); m.set(k,(m.get(k)||0)+1); }
+  return m;
+}
+function suggest(q, limit){
+  const s=norm(q), used=useCounts();
+  let list=s ? S.items.filter(i=>norm(i.name).includes(s)) : S.items.slice();
+  list.sort((a,b)=>{
+    const an=norm(a.name), bn=norm(b.name);
+    /* Prefix beats substring: typing "on" should offer Onion before Lemon. */
+    const ap=s&&an.startsWith(s)?0:1, bp=s&&bn.startsWith(s)?0:1;
+    if(ap!==bp) return ap-bp;
+    const au=used.get(an)||0, bu=used.get(bn)||0;
+    if(au!==bu) return bu-au;
+    return an<bn?-1:1;
+  });
+  return list.slice(0, limit||8);
+}
+
+/* ---------- the shopping list ---------- */
+/* Every basket recipe scaled to the servings you chose, merged by ingredient
+   name, then grouped into aisles. Ingredients with no quantity ("salt", "olive
+   oil") still appear — you just don't get a number. */
+function shopList(){
+  const map=new Map();
+  function line(name, aisle){
+    const k=norm(name);
+    if(!map.has(k)) map.set(k,{key:k, name:name, aisle:aisle||(itemByName(name)||{}).aisle||'other', units:{}, from:[]});
+    return map.get(k);
+  }
+  function addQty(L, qty, unit){
+    if(qty==null || !(+qty>0)) return;
+    const u=norm(unit), f=FAM[u], key=f?f[0]:(u||'pcs');
+    L.units[key]=(L.units[key]||0)+(f?+qty*f[1]:+qty);
+  }
+  for(const b of S.basket){
+    const r=recipeById(b.recipe_id); if(!r) continue;
+    const factor=(b.servings||r.servings)/(r.servings||1);
+    for(const ing of ingsOf(r.id)){
+      const L=line(ing.name);
+      addQty(L, ing.qty==null?null:ing.qty*factor, ing.unit);
+      if(L.from.indexOf(r.title)<0) L.from.push(r.title);
+    }
+  }
+  for(const x of S.extras){
+    const L=line(x.name, x.aisle);
+    addQty(L, x.qty, x.unit);
+    L.extra=x;
+  }
+  const groups=[];
+  for(const [id,label] of AISLES){
+    const rows=[...map.values()].filter(l=>l.aisle===id).sort(byName);
+    if(rows.length) groups.push({id:id, label:label, rows:rows});
+  }
+  return groups;
+}
+function amountText(L){
+  return Object.keys(L.units).map(u=>fmtAmount(L.units[u], u)).join(' + ');
+}
+/* Ticking things off is per-shop and disposable, so it lives in localStorage
+   rather than costing a table and a round trip per tap. */
+function checked(){ try{ return new Set(JSON.parse(localStorage.getItem(CHECK_KEY)||'[]')); }catch(e){ return new Set(); } }
+function setChecked(set){ try{ localStorage.setItem(CHECK_KEY, JSON.stringify([...set])); }catch(e){} }
+
+/* ---------- YouTube ---------- */
+/* Store the id, never the URL: it is the only part that is stable, and it keeps
+   tracking parameters out of the database. */
+function ytId(s){
+  s=(s||'').trim(); if(!s) return '';
+  if(/^[\w-]{11}$/.test(s)) return s;
+  const m=s.match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/|\/live\/)([\w-]{11})/);
+  return m?m[1]:'';
+}
+function videoTile(id){
+  const box=el('div',{class:'vid', role:'button', tabindex:'0', 'aria-label':'Play recipe video'});
+  const btn=el('button',{class:'play','aria-label':'Play'}); btn.innerHTML=ICONS.play;
+  box.append(el('img',{src:'https://i.ytimg.com/vi/'+id+'/hqdefault.jpg', alt:'', loading:'lazy'}), btn);
+  const open=()=>{
+    fill(box, el('iframe',{
+      src:'https://www.youtube-nocookie.com/embed/'+id+'?autoplay=1&rel=0&playsinline=1',
+      allow:'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture',
+      allowfullscreen:'', title:'Recipe video'}));
+    box.style.cursor='default';
+  };
+  box.onclick=open;
+  box.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(); } };
+  return box;
+}
+
+/* ---------- writes ---------- */
+async function ensureItems(names){
+  const missing=[];
+  for(const n of names){ if(norm(n) && !itemByName(n) && !missing.some(m=>norm(m)===norm(n))) missing.push(n.trim()); }
+  if(!missing.length) return;
+  try{
+    const made=await api('mp_items',{method:'POST', body:missing.map(n=>({name:n, aisle:'other'})), headers:REP.headers});
+    S.items=S.items.concat(made).sort(byName);
+  }catch(e){
+    /* Another device added the same name first — the unique index is on
+       lower(name), which PostgREST can't upsert against, so just re-read. */
+    S.items=(await api('mp_items?select=*&order=name.asc'));
+  }
+}
+async function saveRecipe(d){
+  busy(true);
+  try{
+    const rows=d.rows.filter(r=>norm(r.name));
+    await ensureItems(rows.map(r=>r.name));
+    const body={title:d.title.trim(), servings:+d.servings||2, minutes:d.minutes?+d.minutes:null,
+                video:ytId(d.video)||null, steps:splitSteps(d.steps), note:norm(d.note)?d.note.trim():null};
+    let rec;
+    if(d.id){
+      const r=await api('mp_recipes?id=eq.'+d.id,{method:'PATCH', body:body, headers:REP.headers});
+      if(!r[0]) throw new Error('That recipe no longer exists — it may have been deleted on another device.');
+      rec=r[0]; S.recipes=S.recipes.map(x=>x.id===rec.id?rec:x);
+      await api('mp_recipe_items?recipe_id=eq.'+d.id,{method:'DELETE'});
+      S.ings=S.ings.filter(i=>i.recipe_id!==d.id);
+    }else{
+      const r=await api('mp_recipes',{method:'POST', body:body, headers:REP.headers});
+      if(!r[0]) throw new Error('Saved nothing — the database returned an empty row.');
+      rec=r[0]; S.recipes.unshift(rec);
+    }
+    if(rows.length){
+      const made=await api('mp_recipe_items',{method:'POST', headers:REP.headers, body:rows.map((r,i)=>({
+        recipe_id:rec.id, item_id:(itemByName(r.name)||{}).id||null, name:r.name.trim(),
+        qty:(r.qty===''||r.qty==null)?null:+r.qty, unit:norm(r.unit)||null, pos:i}))});
+      S.ings=S.ings.concat(made);
+    }
+    return rec;
+  } finally { busy(false); }
+}
+function splitSteps(text){
+  return (text||'').split('\n').map(s=>s.replace(/^\s*\d+[.)]\s*/,'').trim()).filter(Boolean);
+}
+async function deleteRecipe(id){
+  busy(true);
+  try{ await api('mp_recipes?id=eq.'+id,{method:'DELETE'});
+    S.recipes=S.recipes.filter(r=>r.id!==id);
+    S.ings=S.ings.filter(i=>i.recipe_id!==id);
+    S.basket=S.basket.filter(b=>b.recipe_id!==id);   /* cascades in the DB too */
+  } finally{ busy(false); }
+}
+async function setBasket(recipeId, servings){
+  busy(true);
+  try{
+    if(servings==null){ await api('mp_basket?recipe_id=eq.'+recipeId,{method:'DELETE'}); S.basket=S.basket.filter(b=>b.recipe_id!==recipeId); return; }
+    const cur=inBasket(recipeId);
+    if(cur){ const r=await api('mp_basket?recipe_id=eq.'+recipeId,{method:'PATCH', body:{servings:servings}, headers:REP.headers});
+      if(r[0]) S.basket=S.basket.map(b=>b.recipe_id===recipeId?r[0]:b); }
+    else{ const r=await api('mp_basket',{method:'POST', body:{recipe_id:recipeId, servings:servings}, headers:REP.headers});
+      if(r[0]) S.basket.push(r[0]); }
+  } finally{ busy(false); }
+}
+async function addExtra(name, qty, unit){
+  busy(true);
+  try{ const it=itemByName(name);
+    const r=await api('mp_extras',{method:'POST', headers:REP.headers,
+      body:{name:name.trim(), qty:qty===''||qty==null?null:+qty, unit:norm(unit)||null, aisle:(it&&it.aisle)||'other'}});
+    if(r[0]) S.extras.push(r[0]);
+  } finally{ busy(false); }
+}
+async function delExtra(id){
+  busy(true);
+  try{ await api('mp_extras?id=eq.'+id,{method:'DELETE'}); S.extras=S.extras.filter(x=>x.id!==id); }
+  finally{ busy(false); }
+}
+
+/* ---------- shared bits ---------- */
+function topbar(title, right){
+  return el('div',{class:'topbar'}, el('h1',{}, title), el('div',{class:'nav'}, right||[]));
+}
+function backBar(title, right){
+  return el('div',{class:'topbar'},
+    el('div',{class:'nav'}, el('button',{class:'ico-only','aria-label':'Back', onclick:()=>{ S.recipe=null; S.draft=null; render(); }},'←')),
+    el('h1',{style:'flex:1;min-width:0;font-size:18px;letter-spacing:.04em'}, title),
+    el('div',{class:'nav'}, right||[]));
+}
+function stepper(value, onChange, suffix, min, max){
+  const box=el('div',{class:'stepper'});
+  const val=el('div',{class:'val'});
+  const paint=()=>{ fill(val, String(value), suffix?el('small',{},suffix):null); };
+  const step=n=>()=>{ value=Math.max(min==null?1:min, Math.min(max==null?99:max, value+n)); paint(); onChange(value); };
+  box.append(el('button',{'aria-label':'Less', onclick:step(-1)},'−'), val,
+             el('button',{'aria-label':'More', onclick:step(1)},'+'));
+  paint(); return box;
+}
+/* One catalogue picker, used by the recipe form and by the shopping list's
+   "something else" field. Suggestions are surgical DOM updates, not a render(),
+   so the keyboard never closes mid-word. */
+function itemPicker(placeholder, onPick){
+  const wrap=el('div',{class:'picker'});
+  const input=el('input',{type:'text', placeholder:placeholder, autocomplete:'off', autocapitalize:'sentences', enterkeyhint:'done'});
+  const box=el('div',{class:'sugg', hidden:true});
+  const close=()=>{ box.hidden=true; box.replaceChildren(); };
+  const take=name=>{ close(); input.value=''; onPick(name); input.focus(); };
+  const paint=()=>{
+    const q=input.value, list=suggest(q), exact=q.trim() && itemByName(q);
+    const kids=list.map(i=>el('button',{type:'button', onmousedown:e=>e.preventDefault(), onclick:()=>take(i.name)},
+      el('span',{class:'nm'}, i.name), el('span',{class:'al'}, AISLE_NAME[i.aisle]||'Other')));
+    if(q.trim() && !exact) kids.push(el('button',{class:'new', type:'button', onmousedown:e=>e.preventDefault(), onclick:()=>take(q.trim())},
+      el('span',{class:'nm'},'Add “'+q.trim()+'”'), el('span',{class:'al'},'New')));
+    if(!kids.length){ close(); return; }
+    fill(box, kids); box.hidden=false;
+  };
+  input.oninput=paint;
+  input.onfocus=paint;
+  /* A tap on a suggestion blurs the input first; onmousedown/preventDefault
+     above keeps that from happening, and this only fires on a real blur. */
+  input.onblur=()=>setTimeout(close, 120);
+  input.onkeydown=e=>{
+    if(e.key==='Enter'){ e.preventDefault(); const q=input.value.trim(); if(!q) return;
+      const first=suggest(q,1)[0];
+      take(itemByName(q)?itemByName(q).name : (first && norm(first.name).startsWith(norm(q)) ? first.name : q)); }
+    if(e.key==='Escape') close();
+  };
+  wrap.append(input, box);
+  wrap.input=input;
+  return wrap;
+}
+
+/* ---------- recipes tab ---------- */
+function renderRecipes(){
+  const app=document.getElementById('app');
+  fill(app,
+    topbar('Recipes', el('button',{class:'pri', onclick:()=>{ S.draft=blankDraft(); S.recipe='new'; render(); }},'+ New')),
+    S.recipes.length
+      ? el('div',{class:'cards'}, S.recipes.map(recipeCard))
+      : el('div',{class:'empty'}, 'No recipes yet. Tap ', el('b',{style:'color:var(--acc)'},'+ New'),
+          ' and add one — the ingredient list is already stocked, so most of it is tapping, not typing.'),
+    tabbar());
+}
+function recipeCard(r){
+  const n=ingsOf(r.id).length, b=inBasket(r.id);
+  const bits=[n+' ingredient'+(n===1?'':'s')];
+  if(r.minutes) bits.push(r.minutes+' min');
+  if(r.video) bits.push('video');
+  const card=el('button',{class:'card'+(b?' on':''), onclick:()=>{ S.recipe=r.id; S.servings=b?b.servings:r.servings; render(); }},
+    r.video ? el('img',{class:'thumb', src:'https://i.ytimg.com/vi/'+r.video+'/default.jpg', alt:'', loading:'lazy'})
+            : el('span',{class:'thumb none'}, icon('pot')),
+    el('span',{class:'txt'}, el('b',{}, r.title), el('small',{}, bits.join(' · '))));
+  const add=el('button',{class:'add'+(b?' on':''), 'aria-label':b?'Remove from plan':'Add to plan',
+    onclick:async e=>{ e.stopPropagation();
+      try{ await setBasket(r.id, b?null:r.servings); render(); }catch(err){ toast(err.message); } }});
+  add.append(b?icon('check'):document.createTextNode('+'));
+  card.append(add);
+  return card;
+}
+
+/* ---------- recipe detail + cook mode ---------- */
+function renderRecipe(){
+  const r=recipeById(S.recipe);
+  if(!r){ S.recipe=null; return renderRecipes(); }
+  const b=inBasket(r.id);
+  let serv=S.servings||r.servings;
+  const rows=ingsOf(r.id);
+  const app=document.getElementById('app');
+
+  /* The servings stepper repaints the amounts and the button label in place.
+     Going through render() here would scroll a half-read recipe back to the
+     top on every tap, and rebuild the video tile you were watching. */
+  const count=el('span',{class:'sub'});
+  const list=el('div',{style:'margin-top:8px'});
+  const cta=el('button',{});
+  const paint=()=>{
+    const factor=serv/(r.servings||1);
+    fill(count, serv+' serving'+(serv===1?'':'s'));
+    fill(list, rows.map(i=>el('div',{class:'row'},
+      el('span',{class:'nm'}, i.name),
+      el('span',{class:'v'}, i.qty==null ? '—' : el('b',{}, num(i.qty*factor)+(i.unit?' '+i.unit:''))))));
+    fill(cta, b ? 'Remove from plan' : 'Add '+serv+' serving'+(serv===1?'':'s')+' to plan');
+  };
+  cta.className=b?'':'pri';
+  cta.onclick=async()=>{
+    try{ await setBasket(r.id, b?null:serv); render(); if(!b) toast('Added to the plan', true); }
+    catch(e){ toast(e.message); }
+  };
+
+  const servRow=el('section',{},
+    el('div',{class:'head'}, el('h2',{},'Ingredients'), count),
+    stepper(serv, async v=>{
+      serv=v; S.servings=v; paint();
+      /* Already planned? Then this stepper IS the plan's serving count —
+         silently disagreeing with the Plan tab would be worse than a write. */
+      if(b){ try{ await setBasket(r.id, v); renderShopCount(); }catch(e){ toast(e.message); } }
+    }, null, 1, 99),
+    rows.length ? list : el('div',{class:'empty'},'No ingredients on this one.'));
+  paint();
+
+  fill(app,
+    backBar(r.title, [
+      el('button',{onclick:()=>{ S.draft=draftFrom(r); render(); }},'Edit'),
+      rows.length||r.steps.length ? el('button',{class:'pri', onclick:()=>startCook(r)},'Cook') : null
+    ]),
+    r.video ? videoTile(r.video) : null,
+    el('div',{class:'meta'},
+      el('span',{}, icon('users'), r.servings+' base'),
+      r.minutes ? el('span',{}, icon('clock'), r.minutes+' min') : null,
+      b ? el('span',{style:'color:var(--acc)'}, icon('check'),'In this week’s plan') : null),
+    r.note ? el('div',{class:'status'}, r.note) : null,
+    servRow,
+    r.steps.length ? el('section',{},
+      el('div',{class:'head'}, el('h2',{},'Method')),
+      el('ol',{class:'steps'}, r.steps.map(s=>el('li',{}, s)))) : null,
+    el('div',{class:'btnrow'}, cta),
+    tabbar());
+}
+
+/* Screen Wake Lock so the phone doesn't sleep on step 3 with wet hands.
+   Safari 16.4+ and Chrome have it; anywhere else this is a silent no-op. */
+async function holdScreen(){
+  try{ if('wakeLock' in navigator && !S.wake) S.wake=await navigator.wakeLock.request('screen'); }catch(e){}
+}
+function releaseScreen(){ try{ S.wake&&S.wake.release(); }catch(e){} S.wake=null; }
+function startCook(r){ S.cook={id:r.id, i:0}; holdScreen(); render(); }
+function renderCook(){
+  const r=recipeById(S.cook.id);
+  if(!r){ S.cook=null; releaseScreen(); return render(); }
+  const serv=S.servings||r.servings, factor=serv/(r.servings||1);
+  /* Ingredients read as step zero, so you can check the list before starting. */
+  const pages=[{ing:true}].concat(r.steps.map(s=>({text:s})));
+  const i=Math.max(0, Math.min(S.cook.i, pages.length-1)), p=pages[i];
+  const go=n=>()=>{ S.cook.i=i+n; render(); };
+  const body=p.ing
+    ? el('div',{style:'width:100%'}, ingsOf(r.id).map(x=>el('div',{class:'row'},
+        el('span',{class:'nm'}, x.name),
+        el('span',{class:'v'}, x.qty==null?'—':el('b',{}, num(x.qty*factor)+(x.unit?' '+x.unit:''))))))
+    : el('p',{}, p.text);
+  fill(document.getElementById('app'),el('div',{class:'cook'},
+    el('div',{class:'bar'},
+      el('span',{class:'n'}, p.ing?'Ingredients · '+serv+' serv':'Step '+i+' of '+(pages.length-1)),
+      el('button',{'aria-label':'Close', onclick:()=>{ S.cook=null; releaseScreen(); render(); }},'×')),
+    el('div',{class:'body'}, body),
+    el('div',{class:'ticks'}, pages.map((_,n)=>el('i',{class:n<=i?'on':''}))),
+    el('div',{class:'btnrow'},
+      el('button',{disabled:i===0, onclick:go(-1)},'Back'),
+      i<pages.length-1 ? el('button',{class:'pri', onclick:go(1)},'Next')
+                       : el('button',{class:'pri', onclick:()=>{ S.cook=null; releaseScreen(); render(); }},'Done'))));
+}
+
+/* ---------- recipe form ---------- */
+function blankDraft(){ return {id:null, title:'', servings:2, minutes:null, video:'', steps:'', note:'', rows:[]}; }
+function draftFrom(r){
+  return {id:r.id, title:r.title, servings:r.servings, minutes:r.minutes, video:r.video||'',
+          steps:(r.steps||[]).join('\n'), note:r.note||'',
+          rows:ingsOf(r.id).map(i=>({name:i.name, qty:i.qty==null?'':String(i.qty), unit:i.unit||''}))};
+}
+function renderForm(){
+  const d=S.draft, editing=!!d.id;
+  const msg=el('p',{class:'msg'});
+  const app=document.getElementById('app');
+
+  const ings=el('div',{class:'ings'});
+  const paintIngs=()=>{
+    fill(ings, d.rows.map((row,idx)=>el('div',{class:'ing'},
+      el('input',{class:'q', type:'text', inputmode:'decimal', placeholder:'–', value:row.qty,
+        'aria-label':'Quantity for '+row.name, oninput:e=>{ row.qty=e.target.value; }}),
+      el('input',{class:'u', type:'text', placeholder:'unit', value:row.unit, list:'units',
+        'aria-label':'Unit for '+row.name, oninput:e=>{ row.unit=e.target.value; }}),
+      el('span',{class:'nm'}, row.name),
+      el('button',{class:'x', type:'button','aria-label':'Remove '+row.name,
+        onclick:()=>{ d.rows.splice(idx,1); paintIngs(); }},'×'))));
+  };
+  paintIngs();
+  const picker=itemPicker('Add ingredient…', name=>{
+    const it=itemByName(name);
+    d.rows.push({name:name, qty:'', unit:(it&&it.unit)||''});
+    paintIngs();
+  });
+
+  const vid=el('div',{});
+  const paintVid=()=>{ const id=ytId(d.video); fill(vid, id?videoTile(id):null); };
+  paintVid();
+
+  fill(app,
+    backBar(editing?'Edit recipe':'New recipe'),
+    el('div',{class:'form'+(editing?' editing':'')},
+      el('label',{},'Title', el('input',{type:'text', value:d.title, placeholder:'Gemista',
+        autocapitalize:'sentences', oninput:e=>{ d.title=e.target.value; }})),
+      el('label',{},'Serves', stepper(d.servings, v=>{ d.servings=v; }, null, 1, 99)),
+      el('label',{},'Time', el('div',{class:'quick'}, [15,30,45,60,90].map(m=>{
+        const b=el('button',{type:'button', class:d.minutes===m?'on':'', onclick:()=>{
+          d.minutes=d.minutes===m?null:m;
+          [...b.parentNode.children].forEach(x=>x.classList.toggle('on', +x.dataset.m===d.minutes));
+        }}, m+' min');
+        b.dataset.m=m; return b;
+      }))),
+      el('label',{},'YouTube', el('input',{type:'url', value:d.video, placeholder:'Paste any YouTube link',
+        inputmode:'url', autocapitalize:'off', autocorrect:'off', spellcheck:'false',
+        oninput:e=>{ d.video=e.target.value; }, onchange:paintVid, onblur:paintVid})),
+      vid),
+
+    el('section',{},
+      el('div',{class:'head'}, el('h2',{},'Ingredients'), el('span',{class:'sub'}, d.rows.length||'')),
+      picker,
+      ings),
+
+    el('section',{},
+      el('div',{class:'head'}, el('h2',{},'Method'), el('span',{class:'sub'},'one step per line')),
+      el('textarea',{rows:'7', placeholder:'Chop the onions\nFry until soft\n…',
+        oninput:e=>{ d.steps=e.target.value; }}, d.steps),
+      el('p',{class:'mut', style:'margin:8px 0 0'},'Numbering is added for you — paste a numbered list and it will be stripped.')),
+
+    el('section',{},
+      el('div',{class:'head'}, el('h2',{},'Note'), el('span',{class:'sub'},'optional')),
+      el('textarea',{rows:'2', placeholder:'Freezes well. Double the sauce.',
+        oninput:e=>{ d.note=e.target.value; }}, d.note)),
+
+    msg,
+    el('div',{class:'btnrow'},
+      el('button',{class:'pri', onclick:async()=>{
+        if(!d.title.trim()){ msg.textContent='Give it a title.'; msg.className='msg err'; return; }
+        if(d.video.trim() && !ytId(d.video)){ msg.textContent='That does not look like a YouTube link.'; msg.className='msg err'; return; }
+        try{ const rec=await saveRecipe(d); S.draft=null; S.recipe=rec.id; S.servings=rec.servings; render(); toast('Saved', true); }
+        catch(e){ msg.textContent=e.message; msg.className='msg err'; }
+      }}, editing?'Save':'Add recipe'),
+      el('button',{onclick:()=>{ S.draft=null; if(!editing) S.recipe=null; render(); }},'Cancel'),
+      editing ? el('button',{class:'danger', onclick:async()=>{
+        if(!confirm('Delete “'+d.title+'”?')) return;
+        try{ await deleteRecipe(d.id); S.draft=null; S.recipe=null; render(); toast('Deleted', true); }
+        catch(e){ toast(e.message); }
+      }},'Delete') : null),
+    el('datalist',{id:'units'}, UNITS.map(u=>el('option',{value:u}))),
+    tabbar());
+}
+
+/* ---------- plan tab ---------- */
+function renderPlan(){
+  const rows=S.basket.map(b=>({b:b, r:recipeById(b.recipe_id)})).filter(x=>x.r);
+  const app=document.getElementById('app');
+  fill(app,
+    topbar('Plan', rows.length ? el('button',{onclick:async()=>{
+      if(!confirm('Clear the whole plan?')) return;
+      try{ busy(true); await api('mp_basket?recipe_id=not.is.null',{method:'DELETE'}); S.basket=[]; render(); }
+      catch(e){ toast(e.message); } finally{ busy(false); }
+    }},'Clear') : null),
+    rows.length ? el('div',{},
+      el('p',{class:'mut', style:'margin:0 0 16px'},
+        rows.length+' recipe'+(rows.length===1?'':'s')+' · '+
+        rows.reduce((n,x)=>n+x.b.servings,0)+' servings · '+
+        shopList().reduce((n,g)=>n+g.rows.length,0)+' things to buy'),
+      el('div',{class:'cards'}, rows.map(({b,r})=>el('div',{class:'card on', style:'flex-wrap:wrap'},
+        r.video ? el('img',{class:'thumb', src:'https://i.ytimg.com/vi/'+r.video+'/default.jpg', alt:'', loading:'lazy'})
+                : el('span',{class:'thumb none'}, icon('pot')),
+        el('button',{class:'txt', style:'background:none;border:0;padding:0;text-align:left',
+          onclick:()=>{ S.recipe=r.id; S.servings=b.servings; render(); }},
+          el('b',{}, r.title), el('small',{}, b.servings+' serving'+(b.servings===1?'':'s'))),
+        el('div',{style:'flex:none;width:126px'},
+          stepper(b.servings, async v=>{ try{ await setBasket(r.id, v); renderShopCount(); }catch(e){ toast(e.message); } }, null, 1, 99))
+      )))
+    ) : el('div',{class:'empty'},'Nothing planned. Go to ', el('b',{style:'color:var(--acc)'},'Recipes'),
+        ' and tap + on whatever you fancy this week — the shopping list builds itself.'),
+    tabbar());
+}
+/* The Plan servings stepper changes the Shop badge but nothing else on screen,
+   so it patches the badge instead of re-rendering out from under the tap. */
+function renderShopCount(){
+  const n=shopList().reduce((t,g)=>t+g.rows.length,0);
+  const dot=document.querySelector('.tabbar .dot');
+  if(dot) dot.textContent=String(n);
+}
+
+/* ---------- shop tab ---------- */
+function renderShop(){
+  const groups=shopList(), done=checked();
+  const total=groups.reduce((n,g)=>n+g.rows.length,0);
+  const left=groups.reduce((n,g)=>n+g.rows.filter(r=>!done.has(r.key)).length,0);
+  const app=document.getElementById('app');
+
+  const list=el('div',{});
+  groups.forEach(g=>{
+    list.append(el('div',{class:'aisle'}, g.label));
+    g.rows.forEach(L=>{
+      const amt=amountText(L);
+      const btn=el('button',{class:'shop'+(done.has(L.key)?' done':''), type:'button'});
+      const box=el('span',{class:'box'}); box.append(icon('check'));
+      fill(btn, box,
+        el('span',{class:'nm'}, L.name, L.from.length?el('small',{}, L.from.join(', ')):null),
+        amt?el('span',{class:'q'}, amt):null);
+      btn.onclick=()=>{
+        const set=checked();
+        if(set.has(L.key)) set.delete(L.key); else set.add(L.key);
+        setChecked(set);
+        btn.classList.toggle('done', set.has(L.key));
+        /* Patch the counter in place — a render() here would scroll a
+           half-finished shop back to the top. */
+        const c=document.getElementById('shopcount');
+        if(c) c.textContent=groups.reduce((n,g2)=>n+g2.rows.filter(r=>!set.has(r.key)).length,0)+' left';
+      };
+      /* One-off items get a visible ×. Long-press was the obvious gesture, but
+         iOS Safari fires the system callout instead of contextmenu, which would
+         make an extra unremovable on the one device this is built for. */
+      if(L.extra) list.append(el('div',{class:'shopline'}, btn,
+        el('button',{class:'x', type:'button', 'aria-label':'Remove '+L.name, onclick:async()=>{
+          try{ await delExtra(L.extra.id); render(); }catch(err){ toast(err.message); }
+        }},'×')));
+      else list.append(btn);
+    });
+  });
+
+  const adder=itemPicker('Something else…', async name=>{
+    try{ await addExtra(name, null, (itemByName(name)||{}).unit||null); render(); }
+    catch(e){ toast(e.message); }
+  });
+
+  fill(app,
+    topbar('Shop', [
+      el('span',{class:'sub', id:'shopcount', style:'font-size:13px;color:var(--ink2)'}, left+' left'),
+      total ? el('button',{onclick:()=>{ setChecked(new Set()); render(); }},'Reset') : null
+    ]),
+    adder,
+    total ? el('div',{style:'margin-top:22px'}, list)
+          : el('div',{class:'empty'},'Nothing to buy. Add recipes to the ', el('b',{style:'color:var(--acc)'},'Plan'),
+              ', or type anything you need into the box above.'),
+    tabbar());
+}
+
+/* ---------- settings ---------- */
+function renderSettings(){
+  const used=useCounts();
+  const app=document.getElementById('app');
+  fill(app,
+    topbar('Settings'),
+    el('section',{},
+      el('div',{class:'head'}, el('h2',{},'Ingredient list'), el('span',{class:'sub'}, S.items.length+' items')),
+      el('p',{class:'mut', style:'margin:0 0 14px'},
+        'Everything you type into a recipe joins this list and is offered next time. Set an aisle so it lands in the right part of the shopping list.'),
+      el('div',{}, S.items.map(it=>el('div',{class:'row'},
+        el('span',{class:'nm'}, it.name, (used.get(norm(it.name))||0) ? el('small',{style:'display:block;font-size:12px;color:var(--ink2)'}, 'in '+used.get(norm(it.name))+' recipe'+(used.get(norm(it.name))===1?'':'s')) : null),
+        el('select',{style:'flex:none;width:132px;padding:8px 6px;font-size:13px', value:it.aisle,
+          'aria-label':'Aisle for '+it.name,
+          onchange:async e=>{ const a=e.target.value;
+            try{ busy(true); await api('mp_items?id=eq.'+it.id,{method:'PATCH', body:{aisle:a}}); it.aisle=a; }
+            catch(err){ toast(err.message); } finally{ busy(false); } }},
+          AISLES.map(([id,label])=>el('option',{value:id, selected:it.aisle===id?'':null}, label)))
+      )))),
+    appSwitcher(),
+    el('section',{},
+      el('div',{class:'head'}, el('h2',{},'Account')),
+      el('p',{class:'mut', style:'margin:0 0 14px'},'Same account as Ledger and Overtime.'),
+      el('div',{class:'btnrow'},
+        el('button',{onclick:()=>{ setSess(null); S.ready=false; boot(); }},'Sign out'))),
+    tabbar());
+}
+
+/* The three apps share a login, not a codebase — this is the door between
+   them, not a merge. Only drawn where the siblings actually sit next door. */
+function appSwitcher(){
+  if(!SIBLINGS.length) return null;
+  return el('section',{},
+    el('div',{class:'head'}, el('h2',{},'Your other apps')),
+    el('p',{class:'mut', style:'margin:0 0 12px'},
+      'Same account, same sign-in — no need to sign in again.'),
+    el('div',{class:'btnrow'}, SIBLINGS.map(([id,label])=>el('a',{href:'../'+id+'/'}, label))));
+}
+
+/* ---------- auth ---------- */
+function authError(e){
+  const m=(e&&e.message)||'Something went wrong.';
+  if(/invalid login/i.test(m)) return 'Wrong email or password.';
+  return m;
+}
+function renderAuth(mode){
+  mode=mode||'in';
+  const email=el('input',{type:'email', placeholder:'Email', autocomplete:'username', inputmode:'email', autocapitalize:'off', autocorrect:'off', spellcheck:'false'});
+  const pass=el('input',{type:'password', placeholder:'Password', autocomplete:'current-password'});
+  const msg=el('p',{class:'msg'});
+  const go=async()=>{
+    msg.className='msg'; msg.textContent='';
+    try{
+      busy(true);
+      if(mode==='forgot'){
+        await authReq('recover',{email:email.value.trim(), redirect_to:location.href.split('#')[0]});
+        msg.textContent='Check your email for the reset link.'; return;
+      }
+      const d=await authReq('token?grant_type=password',{email:email.value.trim(), password:pass.value});
+      setSess(d); boot();
+    }catch(e){ msg.className='msg err'; msg.textContent=authError(e); }
+    finally{ busy(false); }
+  };
+  pass.onkeydown=e=>{ if(e.key==='Enter') go(); };
+  email.onkeydown=e=>{ if(e.key==='Enter') (mode==='forgot'?go():pass.focus()); };
+  fill(document.getElementById('app'),el('div',{class:'auth'},
+    el('h1',{},'Kitchen'),
+    el('p',{class:'mut', style:'margin:0 0 6px'}, mode==='forgot'
+      ? 'We’ll email you a link to set a new password.'
+      : SIBLINGS.length
+      ? 'One account for Ledger, Overtime and Kitchen — sign in once and all three open.'
+      : 'Sign in with your Ledger / Overtime account.'),
+    email,
+    mode==='forgot'?null:pass,
+    msg,
+    el('div',{class:'btnrow'}, el('button',{class:'pri', onclick:go}, mode==='forgot'?'Send link':'Sign in')),
+    el('button',{class:'authlink', onclick:()=>renderAuth(mode==='forgot'?'in':'forgot')},
+      mode==='forgot'?'Back to sign in':'Forgot password?')));
+}
+function renderReset(tok){
+  const pass=el('input',{type:'password', placeholder:'New password', autocomplete:'new-password'});
+  const msg=el('p',{class:'msg'});
+  fill(document.getElementById('app'),el('div',{class:'auth'},
+    el('h1',{},'New password'), pass, msg,
+    el('div',{class:'btnrow'}, el('button',{class:'pri', onclick:async()=>{
+      try{ busy(true); await authReq('user',{password:pass.value},'PUT',tok.access_token);
+        setSess(tok); history.replaceState(null,'',location.pathname+location.search); boot(); }
+      catch(e){ msg.className='msg err'; msg.textContent=authError(e); }
+      finally{ busy(false); }
+    }},'Save'))));
+}
+
+/* ---------- shell ---------- */
+function tabbar(){
+  const n=S.ready ? shopList().reduce((t,g)=>t+g.rows.length,0) : 0;
+  const tab=(id,label,badge)=>el('button',{class:S.view===id&&!S.recipe?'on':'',
+    onclick:()=>{ S.view=id; S.recipe=null; S.draft=null; render(); }},
+    label, badge?el('span',{class:'dot'}, badge):null);
+  return el('div',{class:'tabbar'},
+    tab('recipes','Recipes'), tab('plan','Plan', S.basket.length||null),
+    tab('shop','Shop', n||null), tab('settings','Settings'));
+}
+function render(){
+  if(S.cook) return renderCook();
+  if(S.draft) return renderForm();
+  if(S.recipe && S.recipe!=='new') return renderRecipe();
+  if(S.view==='plan') return renderPlan();
+  if(S.view==='shop') return renderShop();
+  if(S.view==='settings') return renderSettings();
+  renderRecipes();
+}
+async function boot(){
+  const rec=recoveryFromHash();
+  if(rec) return renderReset(rec);
+  if(!sess()) return renderAuth();
+  busy(true);
+  try{ await loadAll(); S.ready=true; render(); }
+  catch(e){
+    if(/signed out/.test(e.message)){ setSess(null); return renderAuth(); }
+    fill(document.getElementById('app'),el('div',{class:'auth'},
+      el('h1',{},'Kitchen'),
+      el('p',{class:'msg err'}, e.message),
+      el('div',{class:'btnrow'}, el('button',{class:'pri', onclick:boot},'Try again'))));
+  }
+  finally{ busy(false); }
+}
+/* Reopening the PWA should show what another device added, but never while
+   you're mid-recipe or mid-step. */
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState!=='visible' || !S.ready) return;
+  if(S.cook){ holdScreen(); return; }              /* wake locks die on hide */
+  if(S.draft) return;
+  loadAll().then(render).catch(()=>{});
+});
+/* Everything cached for the account that just went away. Signing in as someone
+   else must not show a frame of the previous person's recipes. */
+function resetData(){
+  S.ready=false; S.recipes=[]; S.ings=[]; S.items=[]; S.basket=[]; S.extras=[];
+  S.recipe=null; S.servings=null; S.draft=null; S.cook=null; S.view='recipes';
+}
+/* Signing in or out in one app lands in the other two straight away, instead of
+   surfacing later as a confusing 401. Token rotation writes this key too, so
+   only a real change — signed out, signed in, or a different account — reboots. */
+window.addEventListener('storage', e=>{
+  if(e.key && e.key!==SESS_KEY) return;          /* key is null on a clear() */
+  const uid=s=>(s&&s.user&&s.user.id)||null;
+  let was=null; try{ was=JSON.parse(e.oldValue||'null'); }catch(x){}
+  const now=sess();
+  if(!now){ resetData(); boot(); return; }
+  if(!was || uid(was)!==uid(now)){ resetData(); boot(); }
+});
+boot();
+</script>

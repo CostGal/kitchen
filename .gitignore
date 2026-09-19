@@ -1,0 +1,11 @@
+# Never commit data exports — this repo is public.
+*.csv
+*.xlsx
+*.dump
+.env*
+__pycache__/
+.DS_Store
+Thumbs.db
+
+# Local tooling, not project source.
+.claude/
