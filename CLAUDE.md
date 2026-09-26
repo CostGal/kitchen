@@ -51,14 +51,16 @@ Schema lives in `supabase/schema.sql` (reference copy; it was applied as the
 migration `kitchen_app_schema`). Schema changes: apply via the Supabase MCP
 (`apply_migration`) and update `supabase/schema.sql` in the same commit.
 
-- `mp_items` — the ingredient catalogue. `name`, `aisle`, `unit` (a default,
-  offered when you pick the item). Unique on `lower(btrim(name))` per user, so
-  "Olive Oil" can never become a second row alongside "olive oil" and split a
-  shopping line in two.
+- `mp_items` — the ingredient catalogue. `name`, `name_el` (Greek, optional),
+  `aisle`, `unit` (a default, offered when you pick the item). Unique on
+  `lower(btrim(name))` per user, so "Olive Oil" can never become a second row
+  alongside "olive oil" and split a shopping line in two; `name_el` has the same
+  index. `name` is canonical — lines merge on it; `name_el` is for display and
+  search only.
 - `mp_recipes` — `title`, `servings` (the base the ingredients are written for),
   `minutes`, `video` (a **YouTube id**, never a URL), `steps text[]`, `note`.
 - `mp_recipe_items` — one ingredient line: `recipe_id`, `item_id`, `name`,
-  `qty`, `unit`, `pos`. `name` is denormalised next to `item_id` on purpose —
+  `name_el`, `qty`, `unit`, `pos`. `name` (and `name_el`) is denormalised next to `item_id` on purpose —
   deleting a catalogue entry must never blank an ingredient in a saved recipe.
 - `mp_basket` — what you've decided to cook. Primary key `(user_id, recipe_id)`,
   so adding the same recipe twice is idempotent. `servings` is what you want
@@ -170,7 +172,10 @@ Mirrors Ledger's and Overtime's conventions:
   promise: type, see ranked suggestions, tap, repeat. It updates its suggestion
   list with surgical DOM writes rather than `render()`, because a re-render
   closes the keyboard mid-word. Ranking is prefix-match first, then how many of
-  your recipes already use the item, then alphabetical. Anything you type that
+  your recipes already use the item, then alphabetical. Matching runs on both
+  names, accent-blind (`bare`) and through a Greeklish sound-key (`fold`), so
+  `κρεμμυδι`, `kremmidi` and `onion` all land on Onion. `itemByName` checks both
+  names too — that's what keeps a Greek spelling from becoming a second row. Anything you type that
   isn't in the catalogue is offered as "Add …" and becomes a permanent
   `mp_items` row — that's how the list learns.
 - `voiceButton` adds a mic to every `itemPicker` where the browser has the

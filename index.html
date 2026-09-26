@@ -124,6 +124,7 @@
   .sugg button .nm{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .sugg button .al{flex:none; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink2)}
   .sugg button.new{color:var(--acc)}
+  .sugg button .nm small{font-size:13px; color:var(--ink2)}
   .picker.hasmic input{padding-right:50px}
   .picker .mic{position:absolute; right:2px; top:50%; transform:translateY(-50%); width:44px; height:44px;
     display:flex; align-items:center; justify-content:center; font-size:19px;
@@ -144,6 +145,7 @@
   .row{display:flex; align-items:center; gap:12px; padding:12px 2px; border-bottom:1px solid var(--rule)}
   .row:last-child{border-bottom:0}
   .row .nm{flex:1; min-width:0; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .row .elname{display:block; margin-top:6px; padding:7px 10px; background:none}   /* 16px inherited: less and iOS zooms */
   .row .v{flex:none; text-align:right; font-size:15px; color:var(--ink2)}
   .row .v b{color:var(--ink); font-weight:500}
   ol.steps{margin:0; padding:0 0 0 2px; list-style:none; counter-reset:s}
@@ -250,6 +252,11 @@ const APPS=[['ledger','Ledger'],['overtime','Overtime'],['kitchen','Kitchen']];
 const SIBLINGS = location.pathname.indexOf('/'+APP_ID+'/')===0
   ? APPS.filter(a=>a[0]!==APP_ID) : [];
 const CHECK_KEY='kitchen_checked';
+const LANG_KEY='kitchen_lang';
+let LANG=(()=>{ try{ return localStorage.getItem(LANG_KEY)==='el'?'el':'en'; }catch(e){ return 'en'; } })();
+/* Display name: the Greek one when the UI is Greek and there is one. The
+   English name stays canonical — it's what lines merge on. */
+function dn(x){ return x ? (LANG==='el' && x.name_el ? x.name_el : x.name) : ''; }
 
 /* ---------- utils ---------- */
 /* Stroke-only marks, sized in em so they inherit colour and size from whatever
@@ -288,6 +295,21 @@ function toast(m, ok){ const t=document.getElementById('toast'); t.textContent=m
 let busyN=0;
 function busy(on){ busyN=Math.max(0, busyN+(on?1:-1)); document.getElementById('load').classList.toggle('on', busyN>0); }
 function norm(s){ return (s||'').trim().toLowerCase(); }
+/* Accent- and case-blind: "Κρεμμυδι" finds "κρεμμύδι". */
+function bare(s){ return norm(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ς/g,'σ'); }
+/* A rough sound-key so Greeklish finds Greek: "kremidi", "kremmydi" and
+   "κρεμμύδι" all fold to "kremidi". Applied to both sides, so it only has to
+   be consistent, not correct. Used alongside bare(), never instead of it —
+   rules like nt→d would otherwise break prefix matching mid-word. */
+const GR={α:'a',β:'v',γ:'g',δ:'d',ε:'e',ζ:'z',η:'i',θ:'th',ι:'i',κ:'k',λ:'l',μ:'m',ν:'n',ξ:'ks',ο:'o',π:'p',ρ:'r',σ:'s',τ:'t',υ:'i',φ:'f',χ:'h',ψ:'ps',ω:'o'};
+function fold(s){
+  return bare(s)
+    .replace(/ου/g,'u').replace(/αι/g,'e').replace(/[εο]ι/g,'i').replace(/γγ/g,'g').replace(/μπ/g,'b').replace(/ντ/g,'d')
+    .replace(/[α-ω]/g,c=>GR[c]||c)
+    .replace(/ou/g,'u').replace(/ai/g,'e').replace(/[eo]i/g,'i').replace(/y/g,'i').replace(/ch|kh|x/g,'h')
+    .replace(/8/g,'th').replace(/w/g,'o').replace(/mp/g,'b').replace(/nt/g,'d').replace(/b/g,'v')
+    .replace(/(.)\1+/g,'$1');
+}
 /* Quantities are display-only: 2 decimals at most, no trailing zeros. */
 function num(n){ return String(Math.round((+n||0)*100)/100); }
 
@@ -445,47 +467,48 @@ async function loadAll(){
 /* A fresh account starts with a stocked catalogue so the very first recipe is
    all tapping and no typing. Everything new you type joins it permanently. */
 const SEED=`
-produce|pcs|Onion,Red onion,Spring onion,Garlic,Potato,Sweet potato,Carrot,Courgette,Aubergine,Cucumber,Green pepper,Red pepper,Tomato,Lemon,Lime,Orange,Apple,Banana,Avocado,Leek,Celery
-produce|g|Spinach,Rocket,Green beans,Mushrooms,Cherry tomatoes,Broccoli,Cauliflower,Cabbage,Lettuce,Dill,Parsley,Mint,Basil,Olives
-meat|g|Chicken breast,Chicken thighs,Whole chicken,Pork chops,Pork fillet,Minced beef,Minced pork,Beef steak,Lamb,Bacon,Sausages
-fish|g|Salmon,Cod,Sea bass,Prawns,Calamari,Anchovies,Sardines,Tuna
-dairy|pcs|Eggs,Butter,Puff pastry,Filo pastry
-dairy|g|Feta,Parmesan,Graviera,Kefalotyri,Mozzarella,Halloumi,Yoghurt,Cream cheese
-dairy|ml|Milk,Cream
-bakery|pcs|Bread,Pita bread,Baguette,Tortillas,Bread rolls
-pantry|g|Flour,Sugar,Salt,Black pepper,Oregano,Paprika,Cumin,Cinnamon,Bay leaves,Rice,Pasta,Spaghetti,Orzo,Couscous,Bulgur,Lentils,Chickpeas,Beans,Breadcrumbs,Walnuts,Almonds,Raisins,Baking powder
-pantry|ml|Olive oil,Sunflower oil,Red wine vinegar,Balsamic vinegar,Soy sauce,White wine,Red wine,Passata,Stock,Honey,Tahini
-pantry|pcs|Tinned tomatoes,Tomato paste,Stock cube,Mustard,Mayonnaise,Ketchup,Peanut butter,Jam
-frozen|g|Frozen peas,Frozen spinach,Frozen chips,Ice cream,Frozen berries
-drinks|pcs|Water,Sparkling water,Orange juice,Beer,Wine,Cola,Coffee,Tea
-household|pcs|Bin bags,Kitchen roll,Washing up liquid,Foil,Cling film,Baking paper,Sponges,Toilet paper,Detergent
-produce|pcs|Shallot,Fennel,Beetroot,Artichoke,Chilli,Ginger,Pear,Peach,Nectarine,Pomegranate,Quince,Fig,Melon,Watermelon,Kiwi,Grapefruit,Mandarin,Radish
-produce|g|Okra,Kale,Chard,Wild greens,Vine leaves,Peas,Broad beans,Coriander,Thyme,Rosemary,Chives,Strawberries,Grapes,Cherries,Apricots,Plums,Pumpkin
-meat|g|Minced lamb,Lamb chops,Leg of lamb,Pork belly,Pork shoulder,Stewing beef,Veal,Chicken wings,Chicken drumsticks,Turkey breast,Ham,Loukaniko,Pancetta,Chicken livers,Rabbit
-fish|g|Mussels,Octopus,Cuttlefish,Sea bream,Red mullet,Swordfish,Smoked salmon,Cod roe,Salted cod
-dairy|g|Kasseri,Manouri,Myzithra,Anthotyro,Kefalograviera,Cheddar,Ricotta,Mascarpone,Greek yoghurt,Grated cheese
-dairy|ml|Evaporated milk,Buttermilk,Kefir
-dairy|pcs|Kataifi pastry,Margarine
-bakery|pcs|Rusks,Koulouri,Sliced bread,Burger buns,Wraps,Breadsticks
-pantry|g|Trahana,Hilopites,Split peas,Giant beans,Black-eyed beans,Semolina,Cornflour,Oats,Quinoa,Polenta,Penne,Tagliatelle,Lasagne sheets,Noodles,Pine nuts,Sesame seeds,Pistachios,Hazelnuts,Brown sugar,Icing sugar,Dried yeast,Baking soda,Cocoa,Dark chocolate,Allspice,Ground cloves,Nutmeg,Chilli flakes,Dried mint,Sumac,Turmeric,Curry powder,Thyme (dried),Dried figs,Cereal,Crackers
-pantry|ml|White vinegar,Lemon juice,Grape molasses,Sesame oil,Coconut milk,Worcestershire sauce,Hot sauce,Vanilla extract,Maple syrup
-pantry|pcs|Capers,Tinned tuna,Tinned chickpeas,Tinned beans,Tinned sweetcorn,Sun-dried tomatoes,Pickles,Tomato sauce,Halva,Biscuits
-frozen|g|Frozen okra,Frozen green beans,Frozen vegetables,Frozen fish fillets,Frozen prawns,Frozen pastry
-frozen|pcs|Frozen pizza,Ice
-drinks|pcs|Greek coffee,Instant coffee,Coffee beans,Herbal tea,Mountain tea,Lemonade,Iced tea,Ouzo,Tsipouro,Soda water
-household|pcs|Dishwasher tablets,Hand soap,Shampoo,Shower gel,Toothpaste,Paper napkins,Freezer bags,Fabric softener,Bleach,Surface cleaner,Glass cleaner,Batteries,Charcoal,Matches`;
+produce|pcs|Onion=Κρεμμύδι,Red onion=Κόκκινο κρεμμύδι,Spring onion=Φρέσκο κρεμμυδάκι,Garlic=Σκόρδο,Potato=Πατάτα,Sweet potato=Γλυκοπατάτα,Carrot=Καρότο,Courgette=Κολοκυθάκι,Aubergine=Μελιτζάνα,Cucumber=Αγγούρι,Green pepper=Πράσινη πιπεριά,Red pepper=Κόκκινη πιπεριά,Tomato=Ντομάτα,Lemon=Λεμόνι,Lime=Λάιμ,Orange=Πορτοκάλι,Apple=Μήλο,Banana=Μπανάνα,Avocado=Αβοκάντο,Leek=Πράσο,Celery=Σέλινο
+produce|g|Spinach=Σπανάκι,Rocket=Ρόκα,Green beans=Φασολάκια,Mushrooms=Μανιτάρια,Cherry tomatoes=Ντοματίνια,Broccoli=Μπρόκολο,Cauliflower=Κουνουπίδι,Cabbage=Λάχανο,Lettuce=Μαρούλι,Dill=Άνηθος,Parsley=Μαϊντανός,Mint=Δυόσμος,Basil=Βασιλικός,Olives=Ελιές
+meat|g|Chicken breast=Στήθος κοτόπουλο,Chicken thighs=Μπούτια κοτόπουλο,Whole chicken=Ολόκληρο κοτόπουλο,Pork chops=Χοιρινές μπριζόλες,Pork fillet=Χοιρινό φιλέτο,Minced beef=Μοσχαρίσιος κιμάς,Minced pork=Χοιρινός κιμάς,Beef steak=Μοσχαρίσια μπριζόλα,Lamb=Αρνί,Bacon=Μπέικον,Sausages=Λουκάνικα
+fish|g|Salmon=Σολομός,Cod=Μπακαλιάρος,Sea bass=Λαβράκι,Prawns=Γαρίδες,Calamari=Καλαμάρι,Anchovies=Γαύρος,Sardines=Σαρδέλες,Tuna=Τόνος
+dairy|pcs|Eggs=Αυγά,Butter=Βούτυρο,Puff pastry=Σφολιάτα,Filo pastry=Φύλλο κρούστας
+dairy|g|Feta=Φέτα,Parmesan=Παρμεζάνα,Graviera=Γραβιέρα,Kefalotyri=Κεφαλοτύρι,Mozzarella=Μοτσαρέλα,Halloumi=Χαλούμι,Yoghurt=Γιαούρτι,Cream cheese=Τυρί κρέμα
+dairy|ml|Milk=Γάλα,Cream=Κρέμα γάλακτος
+bakery|pcs|Bread=Ψωμί,Pita bread=Πίτα,Baguette=Μπαγκέτα,Tortillas=Τορτίγιες,Bread rolls=Ψωμάκια
+pantry|g|Flour=Αλεύρι,Sugar=Ζάχαρη,Salt=Αλάτι,Black pepper=Μαύρο πιπέρι,Oregano=Ρίγανη,Paprika=Πάπρικα,Cumin=Κύμινο,Cinnamon=Κανέλα,Bay leaves=Δάφνη,Rice=Ρύζι,Pasta=Ζυμαρικά,Spaghetti=Σπαγγέτι,Orzo=Κριθαράκι,Couscous=Κους κους,Bulgur=Πλιγούρι,Lentils=Φακές,Chickpeas=Ρεβίθια,Beans=Φασόλια,Breadcrumbs=Φρυγανιά τριμμένη,Walnuts=Καρύδια,Almonds=Αμύγδαλα,Raisins=Σταφίδες,Baking powder=Μπέικιν πάουντερ
+pantry|ml|Olive oil=Ελαιόλαδο,Sunflower oil=Ηλιέλαιο,Red wine vinegar=Ξίδι από κόκκινο κρασί,Balsamic vinegar=Βαλσάμικο,Soy sauce=Σάλτσα σόγιας,White wine=Λευκό κρασί,Red wine=Κόκκινο κρασί,Passata=Πασσάτα,Stock=Ζωμός,Honey=Μέλι,Tahini=Ταχίνι
+pantry|pcs|Tinned tomatoes=Ντομάτα κονσέρβα,Tomato paste=Πελτές ντομάτας,Stock cube=Κύβος ζωμού,Mustard=Μουστάρδα,Mayonnaise=Μαγιονέζα,Ketchup=Κέτσαπ,Peanut butter=Φυστικοβούτυρο,Jam=Μαρμελάδα
+frozen|g|Frozen peas=Αρακάς κατεψυγμένος,Frozen spinach=Σπανάκι κατεψυγμένο,Frozen chips=Πατάτες κατεψυγμένες,Ice cream=Παγωτό,Frozen berries=Φρούτα του δάσους κατεψυγμένα
+drinks|pcs|Water=Νερό,Sparkling water=Ανθρακούχο νερό,Orange juice=Χυμός πορτοκάλι,Beer=Μπίρα,Wine=Κρασί,Cola=Κόλα,Coffee=Καφές,Tea=Τσάι
+household|pcs|Bin bags=Σακούλες σκουπιδιών,Kitchen roll=Χαρτί κουζίνας,Washing up liquid=Υγρό πιάτων,Foil=Αλουμινόχαρτο,Cling film=Μεμβράνη,Baking paper=Λαδόκολλα,Sponges=Σφουγγάρια,Toilet paper=Χαρτί υγείας,Detergent=Απορρυπαντικό
+produce|pcs|Shallot=Εσαλότ,Fennel=Μάραθος,Beetroot=Παντζάρι,Artichoke=Αγκινάρα,Chilli=Καυτερή πιπεριά,Ginger=Τζίντζερ,Pear=Αχλάδι,Peach=Ροδάκινο,Nectarine=Νεκταρίνι,Pomegranate=Ρόδι,Quince=Κυδώνι,Fig=Σύκο,Melon=Πεπόνι,Watermelon=Καρπούζι,Kiwi=Ακτινίδιο,Grapefruit=Γκρέιπφρουτ,Mandarin=Μανταρίνι,Radish=Ραπανάκι
+produce|g|Okra=Μπάμιες,Kale=Κέιλ,Chard=Σέσκουλα,Wild greens=Χόρτα,Vine leaves=Αμπελόφυλλα,Peas=Αρακάς,Broad beans=Κουκιά,Coriander=Κόλιανδρος,Thyme=Θυμάρι,Rosemary=Δεντρολίβανο,Chives=Σχοινόπρασο,Strawberries=Φράουλες,Grapes=Σταφύλια,Cherries=Κεράσια,Apricots=Βερίκοκα,Plums=Δαμάσκηνα,Pumpkin=Κολοκύθα
+meat|g|Minced lamb=Αρνίσιος κιμάς,Lamb chops=Αρνίσια παϊδάκια,Leg of lamb=Αρνίσιο μπούτι,Pork belly=Χοιρινή πανσέτα,Pork shoulder=Χοιρινή σπάλα,Stewing beef=Μοσχάρι κοκκινιστό,Veal=Μοσχαράκι γάλακτος,Chicken wings=Φτερούγες κοτόπουλο,Chicken drumsticks=Κοπανάκια κοτόπουλο,Turkey breast=Στήθος γαλοπούλα,Ham=Ζαμπόν,Loukaniko=Λουκάνικο χωριάτικο,Pancetta=Πανσέτα καπνιστή,Chicken livers=Συκωτάκια κοτόπουλου,Rabbit=Κουνέλι
+fish|g|Mussels=Μύδια,Octopus=Χταπόδι,Cuttlefish=Σουπιά,Sea bream=Τσιπούρα,Red mullet=Μπαρμπούνι,Swordfish=Ξιφίας,Smoked salmon=Καπνιστός σολομός,Cod roe=Ταραμάς,Salted cod=Μπακαλιάρος παστός
+dairy|g|Kasseri=Κασέρι,Manouri=Μανούρι,Myzithra=Μυζήθρα,Anthotyro=Ανθότυρο,Kefalograviera=Κεφαλογραβιέρα,Cheddar=Τσένταρ,Ricotta=Ρικότα,Mascarpone=Μασκαρπόνε,Greek yoghurt=Στραγγιστό γιαούρτι,Grated cheese=Τριμμένο τυρί
+dairy|ml|Evaporated milk=Γάλα εβαπορέ,Buttermilk=Ξινόγαλο,Kefir=Κεφίρ
+dairy|pcs|Kataifi pastry=Κανταΐφι,Margarine=Μαργαρίνη
+bakery|pcs|Rusks=Παξιμάδια,Koulouri=Κουλούρι,Sliced bread=Ψωμί του τοστ,Burger buns=Ψωμάκια χάμπουργκερ,Wraps=Αραβικές πίτες,Breadsticks=Κριτσίνια
+pantry|g|Trahana=Τραχανάς,Hilopites=Χυλοπίτες,Split peas=Φάβα,Giant beans=Γίγαντες,Black-eyed beans=Μαυρομάτικα,Semolina=Σιμιγδάλι,Cornflour=Κορν φλάουρ,Oats=Βρώμη,Quinoa=Κινόα,Polenta=Πολέντα,Penne=Πένες,Tagliatelle=Ταλιατέλες,Lasagne sheets=Φύλλα λαζάνια,Noodles=Νουντλς,Pine nuts=Κουκουνάρι,Sesame seeds=Σουσάμι,Pistachios=Φιστίκια Αιγίνης,Hazelnuts=Φουντούκια,Brown sugar=Καστανή ζάχαρη,Icing sugar=Άχνη ζάχαρη,Dried yeast=Ξηρή μαγιά,Baking soda=Σόδα μαγειρική,Cocoa=Κακάο,Dark chocolate=Μαύρη σοκολάτα,Allspice=Μπαχάρι,Ground cloves=Γαρίφαλο τριμμένο,Nutmeg=Μοσχοκάρυδο,Chilli flakes=Μπούκοβο,Dried mint=Δυόσμος ξερός,Sumac=Σουμάκ,Turmeric=Κουρκουμάς,Curry powder=Κάρι,Thyme (dried)=Θυμάρι ξερό,Dried figs=Σύκα ξερά,Cereal=Δημητριακά,Crackers=Κράκερ
+pantry|ml|White vinegar=Λευκό ξίδι,Lemon juice=Χυμός λεμονιού,Grape molasses=Πετιμέζι,Sesame oil=Σησαμέλαιο,Coconut milk=Γάλα καρύδας,Worcestershire sauce=Σάλτσα Worcestershire,Hot sauce=Καυτερή σάλτσα,Vanilla extract=Εκχύλισμα βανίλιας,Maple syrup=Σιρόπι σφενδάμου
+pantry|pcs|Capers=Κάπαρη,Tinned tuna=Τόνος κονσέρβα,Tinned chickpeas=Ρεβίθια κονσέρβα,Tinned beans=Φασόλια κονσέρβα,Tinned sweetcorn=Καλαμπόκι κονσέρβα,Sun-dried tomatoes=Λιαστές ντομάτες,Pickles=Τουρσί,Tomato sauce=Σάλτσα ντομάτας,Halva=Χαλβάς,Biscuits=Μπισκότα
+frozen|g|Frozen okra=Μπάμιες κατεψυγμένες,Frozen green beans=Φασολάκια κατεψυγμένα,Frozen vegetables=Λαχανικά κατεψυγμένα,Frozen fish fillets=Φιλέτα ψαριού κατεψυγμένα,Frozen prawns=Γαρίδες κατεψυγμένες,Frozen pastry=Ζύμη κατεψυγμένη
+frozen|pcs|Frozen pizza=Πίτσα κατεψυγμένη,Ice=Πάγος
+drinks|pcs|Greek coffee=Ελληνικός καφές,Instant coffee=Στιγμιαίος καφές,Coffee beans=Καφές σε κόκκους,Herbal tea=Αφέψημα,Mountain tea=Τσάι του βουνού,Lemonade=Λεμονάδα,Iced tea=Κρύο τσάι,Ouzo=Ούζο,Tsipouro=Τσίπουρο,Soda water=Σόδα
+household|pcs|Dishwasher tablets=Ταμπλέτες πλυντηρίου πιάτων,Hand soap=Κρεμοσάπουνο,Shampoo=Σαμπουάν,Shower gel=Αφρόλουτρο,Toothpaste=Οδοντόκρεμα,Paper napkins=Χαρτοπετσέτες,Freezer bags=Σακουλάκια κατάψυξης,Fabric softener=Μαλακτικό,Bleach=Χλωρίνη,Surface cleaner=Καθαριστικό επιφανειών,Glass cleaner=Καθαριστικό τζαμιών,Batteries=Μπαταρίες,Charcoal=Κάρβουνα,Matches=Σπίρτα`;
 function seedRows(){
   const rows=[];
   SEED.trim().split('\n').forEach(line=>{
     const [aisle, unit, names]=line.split('|');
-    names.split(',').forEach(n=>rows.push({name:n.trim(), aisle:aisle, unit:unit}));
+    names.split(',').forEach(n=>{ const [en, gr]=n.split('=');
+      rows.push({name:en.trim(), name_el:(gr||'').trim()||null, aisle:aisle, unit:unit}); });
   });
   return rows;
 }
 /* The seed grows over time, and older accounts were stocked from a shorter
    one. This is what they're missing — offered from Settings rather than
    added silently, so an item you deleted doesn't creep back. */
-function missingSeed(){ return seedRows().filter(r=>!itemByName(r.name)); }
+function missingSeed(){ return seedRows().filter(r=>!itemByName(r.name) && !itemByName(r.name_el)); }
 async function seedItems(rows){
   rows=rows||seedRows();
   if(!rows.length) return true;
@@ -495,7 +518,12 @@ async function seedItems(rows){
 function byName(a,b){ return norm(a.name)<norm(b.name)?-1:1; }
 function recipeById(id){ return S.recipes.find(r=>r.id===id)||null; }
 function ingsOf(id){ return S.ings.filter(i=>i.recipe_id===id); }
-function itemByName(n){ const k=norm(n); return S.items.find(i=>norm(i.name)===k)||null; }
+/* Either language finds the one row, so a Greek name can never become a
+   second catalogue entry — and a second shopping line. */
+function itemByName(n){
+  const k=bare(n); if(!k) return null;
+  return S.items.find(i=>bare(i.name)===k)||S.items.find(i=>i.name_el && bare(i.name_el)===k)||null;
+}
 function inBasket(id){ return S.basket.find(b=>b.recipe_id===id)||null; }
 /* How often each catalogue item actually appears in your recipes. Derived, not
    stored — the recipes are already in memory, so a counter column would be a
@@ -506,18 +534,28 @@ function useCounts(){
   return m;
 }
 function suggest(q, limit){
-  const s=norm(q), used=useCounts();
-  let list=s ? S.items.filter(i=>norm(i.name).includes(s)) : S.items.slice();
-  list.sort((a,b)=>{
-    const an=norm(a.name), bn=norm(b.name);
+  const s=bare(q), f=fold(q), used=useCounts();
+  /* 0 = prefix match, 1 = somewhere inside, 2 = no match — on either name,
+     spelled either way. */
+  const score=i=>{
+    let best=2;
+    for(const n of [i.name, i.name_el]){ if(!n) continue;
+      const b=bare(n), fn=fold(n);
+      if(b.startsWith(s) || (f && fn.startsWith(f))) return 0;
+      if(b.includes(s) || (f && fn.includes(f))) best=1;
+    }
+    return best;
+  };
+  let list=S.items.map(i=>({i:i, sc:s?score(i):1})).filter(x=>x.sc<2);
+  list.sort((x,y)=>{
+    const a=x.i, b=y.i, an=norm(a.name), bn=norm(b.name);
     /* Prefix beats substring: typing "on" should offer Onion before Lemon. */
-    const ap=s&&an.startsWith(s)?0:1, bp=s&&bn.startsWith(s)?0:1;
-    if(ap!==bp) return ap-bp;
+    if(x.sc!==y.sc) return x.sc-y.sc;
     const au=used.get(an)||0, bu=used.get(bn)||0;
     if(au!==bu) return bu-au;
-    return an<bn?-1:1;
+    return bare(dn(a))<bare(dn(b))?-1:1;
   });
-  return list.slice(0, limit||8);
+  return list.slice(0, limit||8).map(x=>x.i);
 }
 
 /* ---------- the shopping list ---------- */
@@ -526,9 +564,10 @@ function suggest(q, limit){
    oil") still appear — you just don't get a number. */
 function shopList(){
   const map=new Map();
-  function line(name, aisle){
+  function line(name, aisle, el){
     const k=norm(name);
-    if(!map.has(k)) map.set(k,{key:k, name:name, aisle:aisle||(itemByName(name)||{}).aisle||'other', units:{}, from:[]});
+    if(!map.has(k)){ const it=itemByName(name)||{};
+      map.set(k,{key:k, name:name, name_el:el||it.name_el||null, aisle:aisle||it.aisle||'other', units:{}, from:[]}); }
     return map.get(k);
   }
   function addQty(L, qty, unit){
@@ -540,7 +579,7 @@ function shopList(){
     const r=recipeById(b.recipe_id); if(!r) continue;
     const factor=(b.servings||r.servings)/(r.servings||1);
     for(const ing of ingsOf(r.id)){
-      const L=line(ing.name);
+      const L=line(ing.name, null, ing.name_el);
       addQty(L, ing.qty==null?null:ing.qty*factor, ing.unit);
       if(L.from.indexOf(r.title)<0) L.from.push(r.title);
     }
@@ -552,7 +591,7 @@ function shopList(){
   }
   const groups=[];
   for(const [id,label] of AISLES){
-    const rows=[...map.values()].filter(l=>l.aisle===id).sort(byName);
+    const rows=[...map.values()].filter(l=>l.aisle===id).sort((a,b)=>bare(dn(a))<bare(dn(b))?-1:1);
     if(rows.length) groups.push({id:id, label:label, rows:rows});
   }
   return groups;
@@ -626,6 +665,7 @@ async function saveRecipe(d){
     if(rows.length){
       const made=await api('mp_recipe_items',{method:'POST', headers:REP.headers, body:rows.map((r,i)=>({
         recipe_id:rec.id, item_id:(itemByName(r.name)||{}).id||null, name:r.name.trim(),
+        name_el:(itemByName(r.name)||{}).name_el||null,
         qty:(r.qty===''||r.qty==null)?null:+r.qty, unit:norm(r.unit)||null, pos:i}))});
       S.ings=S.ings.concat(made);
     }
@@ -698,8 +738,9 @@ function itemPicker(placeholder, onPick){
   const take=name=>{ close(); input.value=''; onPick(name); input.focus(); };
   const paint=()=>{
     const q=input.value, list=suggest(q), exact=q.trim() && itemByName(q);
-    const kids=list.map(i=>el('button',{type:'button', onmousedown:e=>e.preventDefault(), onclick:()=>take(i.name)},
-      el('span',{class:'nm'}, i.name), el('span',{class:'al'}, AISLE_NAME[i.aisle]||'Other')));
+    const kids=list.map(i=>{ const other=LANG==='el'?(i.name_el?i.name:null):i.name_el;
+      return el('button',{type:'button', onmousedown:e=>e.preventDefault(), onclick:()=>take(i.name)},
+        el('span',{class:'nm'}, dn(i), other?el('small',{}, ' · '+other):null), el('span',{class:'al'}, AISLE_NAME[i.aisle]||'Other')); });
     if(q.trim() && !exact) kids.push(el('button',{class:'new', type:'button', onmousedown:e=>e.preventDefault(), onclick:()=>take(q.trim())},
       el('span',{class:'nm'},'Add “'+q.trim()+'”'), el('span',{class:'al'},'New')));
     if(!kids.length){ close(); return; }
@@ -807,7 +848,7 @@ function renderRecipe(){
     const factor=serv/(r.servings||1);
     fill(count, serv+' serving'+(serv===1?'':'s'));
     fill(list, rows.map(i=>el('div',{class:'row'},
-      el('span',{class:'nm'}, i.name),
+      el('span',{class:'nm'}, dn(i)),
       el('span',{class:'v'}, i.qty==null ? '—' : el('b',{}, num(i.qty*factor)+(i.unit?' '+i.unit:''))))));
     fill(cta, b ? 'Remove from plan' : 'Add '+serv+' serving'+(serv===1?'':'s')+' to plan');
   };
@@ -864,7 +905,7 @@ function renderCook(){
   const go=n=>()=>{ S.cook.i=i+n; render(); };
   const body=p.ing
     ? el('div',{style:'width:100%'}, ingsOf(r.id).map(x=>el('div',{class:'row'},
-        el('span',{class:'nm'}, x.name),
+        el('span',{class:'nm'}, dn(x)),
         el('span',{class:'v'}, x.qty==null?'—':el('b',{}, num(x.qty*factor)+(x.unit?' '+x.unit:''))))))
     : el('p',{}, p.text);
   fill(document.getElementById('app'),el('div',{class:'cook'},
@@ -898,7 +939,7 @@ function renderForm(){
         'aria-label':'Quantity for '+row.name, oninput:e=>{ row.qty=e.target.value; }}),
       el('input',{class:'u', type:'text', placeholder:'unit', value:row.unit, list:'units',
         'aria-label':'Unit for '+row.name, oninput:e=>{ row.unit=e.target.value; }}),
-      el('span',{class:'nm'}, row.name),
+      el('span',{class:'nm'}, dn(itemByName(row.name)||row)),
       el('button',{class:'x', type:'button','aria-label':'Remove '+row.name,
         onclick:()=>{ d.rows.splice(idx,1); paintIngs(); }},'×'))));
   };
@@ -1016,7 +1057,7 @@ function renderShop(){
       const btn=el('button',{class:'shop'+(done.has(L.key)?' done':''), type:'button'});
       const box=el('span',{class:'box'}); box.append(icon('check'));
       fill(btn, box,
-        el('span',{class:'nm'}, L.name, L.from.length?el('small',{}, L.from.join(', ')):null),
+        el('span',{class:'nm'}, dn(L), L.from.length?el('small',{}, L.from.join(', ')):null),
         amt?el('span',{class:'q'}, amt):null);
       btn.onclick=()=>{
         const set=checked();
@@ -1032,7 +1073,7 @@ function renderShop(){
          iOS Safari fires the system callout instead of contextmenu, which would
          make an extra unremovable on the one device this is built for. */
       if(L.extra) list.append(el('div',{class:'shopline'}, btn,
-        el('button',{class:'x', type:'button', 'aria-label':'Remove '+L.name, onclick:async()=>{
+        el('button',{class:'x', type:'button', 'aria-label':'Remove '+dn(L), onclick:async()=>{
           try{ await delExtra(L.extra.id); render(); }catch(err){ toast(err.message); }
         }},'×')));
       else list.append(btn);
@@ -1080,7 +1121,14 @@ function renderSettings(){
             else toast('Couldn’t add them — try again.'); }
           finally{ busy(false); } }}, 'Add '+missing.length+' common ingredients')) : null,
       el('div',{}, S.items.map(it=>el('div',{class:'row'},
-        el('span',{class:'nm'}, it.name, (used.get(norm(it.name))||0) ? el('small',{style:'display:block;font-size:12px;color:var(--ink2)'}, 'in '+used.get(norm(it.name))+' recipe'+(used.get(norm(it.name))===1?'':'s')) : null),
+        el('div',{class:'nm'}, it.name, (used.get(norm(it.name))||0) ? el('small',{style:'display:block;font-size:12px;color:var(--ink2)'}, 'in '+used.get(norm(it.name))+' recipe'+(used.get(norm(it.name))===1?'':'s')) : null,
+          el('input',{class:'elname', type:'text', lang:'el', value:it.name_el||'', placeholder:'Ελληνικά',
+            'aria-label':'Greek name for '+it.name, autocapitalize:'sentences',
+            onchange:async e=>{ const v=e.target.value.trim()||null;
+              const twin=v && itemByName(v);
+              if(twin && twin!==it){ toast('“'+v+'” is already '+twin.name+'.'); e.target.value=it.name_el||''; return; }
+              try{ busy(true); await api('mp_items?id=eq.'+it.id,{method:'PATCH', body:{name_el:v}}); it.name_el=v; }
+              catch(err){ toast(err.message); e.target.value=it.name_el||''; } finally{ busy(false); } }})),
         el('select',{style:'flex:none;width:132px;padding:8px 6px;font-size:13px', value:it.aisle,
           'aria-label':'Aisle for '+it.name,
           onchange:async e=>{ const a=e.target.value;
