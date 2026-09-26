@@ -192,6 +192,9 @@
   .cook .ticks i{flex:1; height:3px; border-radius:2px; background:var(--rule)}
   .cook .ticks i.on{background:var(--acc)}
   .cook .btnrow{flex:none}
+  .tour .body{flex-direction:column; align-items:flex-start; justify-content:center; gap:16px}
+  .tour .body h2{margin:0; font-size:15px; font-weight:400; letter-spacing:.16em; text-transform:uppercase; color:var(--acc)}
+  .tour .body p{font-size:22px}
 
   .tabbar{position:fixed; left:0; right:0; bottom:0; z-index:10; display:flex; justify-content:center; gap:6px;
     padding:10px 16px calc(env(safe-area-inset-bottom) + 10px);
@@ -306,6 +309,12 @@ const EL={
   'Add “{x}”':'Προσθήκη «{x}»','New':'Νέο','Play recipe video':'Αναπαραγωγή βίντεο','Recipe video':'Βίντεο συνταγής','Play':'Αναπαραγωγή',
   'Less':'Λιγότερες','More':'Περισσότερες',
   'That recipe no longer exists — it may have been deleted on another device.':'Η συνταγή δεν υπάρχει πια — ίσως διαγράφηκε από άλλη συσκευή.',
+  'Welcome':'Καλώς ήρθες','Show the tour':'Δες την ξενάγηση','Skip':'Παράλειψη','Start':'Ξεκίνα',
+  'Keep your recipes here, tick the ones you’re cooking this week, and Kitchen writes the shopping list for you.':'Κράτα εδώ τις συνταγές σου, διάλεξε τι μαγειρεύεις αυτή την εβδομάδα και το Kitchen γράφει τη λίστα για ψώνια για σένα.',
+  'Tap + New to add one. Type an ingredient and pick it from the suggestions — or tap the mic and say it. Greek or English, either works.':'Πάτα + Νέα για να προσθέσεις μία. Γράψε ένα υλικό και διάλεξέ το από τις προτάσεις — ή πάτα το μικρόφωνο και πες το. Ελληνικά ή αγγλικά, όπως σε βολεύει.',
+  'Tap + on a recipe card to put it in this week’s plan. Change the servings there and every amount follows.':'Πάτα + σε μια συνταγή για να μπει στο πλάνο της εβδομάδας. Άλλαξε τις μερίδες εκεί και όλες οι ποσότητες ακολουθούν.',
+  'Every planned recipe merged into one list, in the order you walk the shop. Tap a line to tick it off; add anything else at the top.':'Όλες οι συνταγές του πλάνου σε μία λίστα, με τη σειρά που περπατάς στο μαγαζί. Πάτα μια γραμμή για να τη σημειώσεις· ό,τι άλλο θες, το γράφεις από πάνω.',
+  'Open a recipe and tap Cook for one step at a time, big enough to read from the hob. The screen stays awake.':'Άνοιξε μια συνταγή και πάτα Μαγείρεμα για ένα βήμα τη φορά, με γράμματα που διαβάζονται από την κουζίνα. Η οθόνη μένει αναμμένη.',
   'Fruit & veg':'Μανάβικο','Bakery':'Φούρνος','Meat':'Κρέας','Fish':'Ψάρι','Dairy & eggs':'Γαλακτοκομικά',
   'Pantry':'Ντουλάπι','Frozen':'Κατεψυγμένα','Drinks':'Ποτά','Household':'Σπίτι','Other':'Άλλα'
 };
@@ -518,7 +527,7 @@ function fmtAmount(qty, unit){
    S.draft holds the half-finished recipe form for the same reason Overtime's
    does: a background refetch must not throw away what you were typing. */
 const S={view:'recipes', recipes:[], ings:[], items:[], basket:[], extras:[],
-         recipe:null, servings:null, draft:null, cook:null, wake:null, ready:false};
+         recipe:null, servings:null, draft:null, cook:null, tour:null, wake:null, ready:false};
 
 async function loadAll(){
   const [items, recipes, ings, basket, extras]=await Promise.all([
@@ -988,6 +997,39 @@ function renderCook(){
                        : el('button',{class:'pri', onclick:()=>{ S.cook=null; releaseScreen(); render(); }}, t('Done')))));
 }
 
+/* ---------- first-launch tour ---------- */
+/* Shown once per device after sign-in (never to a signed-out visitor), and
+   replayable from Settings. Per device rather than per account: a flag on the
+   server would be a column for a slideshow. The first card picks the language,
+   so everything after it is already in the one you read. */
+const TOUR_KEY='kitchen_toured';
+const TOUR=[
+  ['Welcome','Keep your recipes here, tick the ones you’re cooking this week, and Kitchen writes the shopping list for you.'],
+  ['Recipes','Tap + New to add one. Type an ingredient and pick it from the suggestions — or tap the mic and say it. Greek or English, either works.'],
+  ['Plan','Tap + on a recipe card to put it in this week’s plan. Change the servings there and every amount follows.'],
+  ['Shop','Every planned recipe merged into one list, in the order you walk the shop. Tap a line to tick it off; add anything else at the top.'],
+  ['Cook','Open a recipe and tap Cook for one step at a time, big enough to read from the hob. The screen stays awake.']];
+function toured(){ try{ return !!localStorage.getItem(TOUR_KEY); }catch(e){ return true; } }
+function endTour(){ try{ localStorage.setItem(TOUR_KEY,'1'); }catch(e){} S.tour=null; render(); }
+function renderTour(){
+  const i=Math.max(0, Math.min(S.tour, TOUR.length-1)), [head, body]=TOUR[i];
+  const go=n=>()=>{ S.tour=i+n; render(); };
+  fill(document.getElementById('app'), el('div',{class:'cook tour'},
+    el('div',{class:'bar'},
+      el('span',{class:'n'}, (i+1)+' / '+TOUR.length),
+      i<TOUR.length-1 ? el('button',{style:'font-size:15px', onclick:endTour}, t('Skip')) : null),
+    el('div',{class:'body'},
+      el('h2',{}, t(head)),
+      el('p',{}, t(body)),
+      i===0 ? el('div',{class:'quick'}, [['en','English'],['el','Ελληνικά']].map(([l,label])=>
+        el('button',{lang:l, class:LANG===l?'on':'', onclick:()=>{ setLang(l); render(); }}, label))) : null),
+    el('div',{class:'ticks'}, TOUR.map((_,n)=>el('i',{class:n<=i?'on':''}))),
+    el('div',{class:'btnrow'},
+      el('button',{disabled:i===0, onclick:go(-1)}, t('Back')),
+      i<TOUR.length-1 ? el('button',{class:'pri', onclick:go(1)}, t('Next'))
+                      : el('button',{class:'pri', onclick:endTour}, t('Start')))));
+}
+
 /* ---------- recipe form ---------- */
 function blankDraft(){ return {id:null, title:'', servings:2, minutes:null, video:'', steps:'', note:'', rows:[]}; }
 function draftFrom(r){
@@ -1174,7 +1216,9 @@ function renderSettings(){
     el('section',{},
       el('div',{class:'head'}, el('h2',{}, t('Language'))),
       el('div',{class:'quick'}, [['en','English'],['el','Ελληνικά']].map(([l,label])=>el('button',{lang:l, class:LANG===l?'on':'',
-        onclick:()=>{ setLang(l); render(); }}, label)))),
+        onclick:()=>{ setLang(l); render(); }}, label))),
+      el('div',{class:'btnrow', style:'margin-top:14px'},
+        el('button',{onclick:()=>{ S.tour=0; render(); }}, t('Show the tour')))),
     el('section',{},
       el('div',{class:'head'}, el('h2',{}, t('Units'))),
       el('p',{class:'mut', style:'margin:0 0 14px'},
@@ -1292,6 +1336,7 @@ function tabbar(){
     tab('shop',t('Shop'), n||null), tab('settings',t('Settings')));
 }
 function render(){
+  if(S.tour!=null) return renderTour();
   if(S.cook) return renderCook();
   if(S.draft) return renderForm();
   if(S.recipe && S.recipe!=='new') return renderRecipe();
@@ -1305,7 +1350,7 @@ async function boot(){
   if(rec) return renderReset(rec);
   if(!sess()) return renderAuth();
   busy(true);
-  try{ await loadAll(); S.ready=true; render(); }
+  try{ await loadAll(); S.ready=true; if(!toured()) S.tour=0; render(); }
   catch(e){
     if(/signed out/.test(e.message)){ setSess(null); return renderAuth(); }
     fill(document.getElementById('app'),el('div',{class:'auth'},
@@ -1327,7 +1372,7 @@ document.addEventListener('visibilitychange', ()=>{
    else must not show a frame of the previous person's recipes. */
 function resetData(){
   S.ready=false; S.recipes=[]; S.ings=[]; S.items=[]; S.basket=[]; S.extras=[];
-  S.recipe=null; S.servings=null; S.draft=null; S.cook=null; S.view='recipes';
+  S.recipe=null; S.servings=null; S.draft=null; S.cook=null; S.tour=null; S.view='recipes';
 }
 /* Signing in or out in one app lands in the other two straight away, instead of
    surfacing later as a confusing 401. Token rotation writes this key too, so
