@@ -64,6 +64,8 @@
   .form.editing{border-color:var(--acc)}
   .form label{min-width:0; font-size:12.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink2); display:flex; flex-direction:column; gap:6px}
   .quick{display:flex; flex-wrap:wrap; gap:6px}
+  .unitpref{display:flex; flex-direction:column; gap:6px; margin-bottom:12px; font-size:12.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink2)}
+  .unitpref .quick button{letter-spacing:0; text-transform:none; min-width:64px}
   .quick button{min-height:40px; padding:0 13px; font-size:14px; color:var(--ink2); background:var(--card2); border:1px solid var(--rule); border-radius:20px}
   .quick button.on{color:var(--acc); border-color:var(--acc)}
   .btnrow{display:flex; gap:8px}
@@ -122,6 +124,11 @@
   .sugg button .nm{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .sugg button .al{flex:none; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink2)}
   .sugg button.new{color:var(--acc)}
+  .picker.hasmic input{padding-right:50px}
+  .picker .mic{position:absolute; right:2px; top:50%; transform:translateY(-50%); width:44px; height:44px;
+    display:flex; align-items:center; justify-content:center; font-size:19px;
+    background:none; border:0; border-radius:9px; color:var(--ink2)}
+  .picker .mic.on{color:var(--acc)}
 
   .ings{display:flex; flex-direction:column; gap:7px; margin-top:12px}
   .ing{display:flex; align-items:center; gap:6px}
@@ -253,6 +260,7 @@ const ICONS={
   clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 20v-2a4 4 0 00-3-3.87"/></svg>',
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg>',
+  mic  :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',
   pot  :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18M4.5 9v8a3 3 0 003 3h9a3 3 0 003-3V9"/><path d="M8 6V3M16 6V3M12 6V4"/></svg>'
 };
 function icon(n){ const s=el('span',{class:'ico'}); s.innerHTML=ICONS[n]||''; return s; }
@@ -262,7 +270,7 @@ function el(tag, props, ...kids){
     if(k==='class') n.className=props[k];
     else if(k.slice(0,2)==='on') n[k]=props[k];
     else if(k==='hidden'||k==='disabled'||k==='value'||k==='checked') n[k]=props[k];
-    else n.setAttribute(k, props[k]);
+    else if(props[k]!=null) n.setAttribute(k, props[k]);   /* null = leave the attribute off */
   }
   kids.flat().forEach(c=>{ if(c!=null && c!==false) n.appendChild(typeof c==='string'||typeof c==='number'?document.createTextNode(String(c)):c); });
   return n;
@@ -387,9 +395,29 @@ const AISLE_NAME=Object.fromEntries(AISLES);
    honest, whereas inventing a conversion between them is not. */
 const FAM={g:['g',1], kg:['g',1000], ml:['ml',1], l:['ml',1000], lt:['ml',1000]};
 const UNITS=['g','kg','ml','l','pcs','tbsp','tsp','clove','bunch','tin','pack','pinch'];
+/* Which unit mass and volume are shown in on the shopping list. Display only:
+   quantities are still stored as written and summed in g / ml. There is no
+   setting for spoons, cloves or tins because there is nothing honest to
+   convert them to. */
+const UNIT_KEY='kitchen_units';
+const UNIT_PREFS=[['mass','Weight',['auto','g','kg']],['vol','Volume',['auto','ml','l']]];
+function unitPrefs(){
+  let p={}; try{ p=JSON.parse(localStorage.getItem(UNIT_KEY)||'{}')||{}; }catch(e){}
+  return {mass:p.mass||'auto', vol:p.vol||'auto'};
+}
+function setUnitPref(k, v){
+  const p=unitPrefs(); p[k]=v;
+  try{ localStorage.setItem(UNIT_KEY, JSON.stringify(p)); }catch(e){}
+}
+function big(qty, base, pref){
+  return pref==='auto' ? qty>=1000 : pref!==base;
+}
 function fmtAmount(qty, unit){
-  if(unit==='g'  && qty>=1000) return num(qty/1000)+' kg';
-  if(unit==='ml' && qty>=1000) return num(qty/1000)+' l';
+  const p=unitPrefs();
+  /* Three decimals once scaled up, so 5 g still reads 0.005 kg, not 0.01. */
+  const k=n=>String(Math.round(n*1000)/1000);
+  if(unit==='g'  && big(qty,'g', p.mass)) return k(qty/1000)+' kg';
+  if(unit==='ml' && big(qty,'ml',p.vol))  return k(qty/1000)+' l';
   if(unit==='pcs') return '× '+num(qty);
   return num(qty)+' '+unit;
 }
@@ -430,15 +458,39 @@ pantry|ml|Olive oil,Sunflower oil,Red wine vinegar,Balsamic vinegar,Soy sauce,Wh
 pantry|pcs|Tinned tomatoes,Tomato paste,Stock cube,Mustard,Mayonnaise,Ketchup,Peanut butter,Jam
 frozen|g|Frozen peas,Frozen spinach,Frozen chips,Ice cream,Frozen berries
 drinks|pcs|Water,Sparkling water,Orange juice,Beer,Wine,Cola,Coffee,Tea
-household|pcs|Bin bags,Kitchen roll,Washing up liquid,Foil,Cling film,Baking paper,Sponges,Toilet paper,Detergent`;
-async function seedItems(){
+household|pcs|Bin bags,Kitchen roll,Washing up liquid,Foil,Cling film,Baking paper,Sponges,Toilet paper,Detergent
+produce|pcs|Shallot,Fennel,Beetroot,Artichoke,Chilli,Ginger,Pear,Peach,Nectarine,Pomegranate,Quince,Fig,Melon,Watermelon,Kiwi,Grapefruit,Mandarin,Radish
+produce|g|Okra,Kale,Chard,Wild greens,Vine leaves,Peas,Broad beans,Coriander,Thyme,Rosemary,Chives,Strawberries,Grapes,Cherries,Apricots,Plums,Pumpkin
+meat|g|Minced lamb,Lamb chops,Leg of lamb,Pork belly,Pork shoulder,Stewing beef,Veal,Chicken wings,Chicken drumsticks,Turkey breast,Ham,Loukaniko,Pancetta,Chicken livers,Rabbit
+fish|g|Mussels,Octopus,Cuttlefish,Sea bream,Red mullet,Swordfish,Smoked salmon,Cod roe,Salted cod
+dairy|g|Kasseri,Manouri,Myzithra,Anthotyro,Kefalograviera,Cheddar,Ricotta,Mascarpone,Greek yoghurt,Grated cheese
+dairy|ml|Evaporated milk,Buttermilk,Kefir
+dairy|pcs|Kataifi pastry,Margarine
+bakery|pcs|Rusks,Koulouri,Sliced bread,Burger buns,Wraps,Breadsticks
+pantry|g|Trahana,Hilopites,Split peas,Giant beans,Black-eyed beans,Semolina,Cornflour,Oats,Quinoa,Polenta,Penne,Tagliatelle,Lasagne sheets,Noodles,Pine nuts,Sesame seeds,Pistachios,Hazelnuts,Brown sugar,Icing sugar,Dried yeast,Baking soda,Cocoa,Dark chocolate,Allspice,Ground cloves,Nutmeg,Chilli flakes,Dried mint,Sumac,Turmeric,Curry powder,Thyme (dried),Dried figs,Cereal,Crackers
+pantry|ml|White vinegar,Lemon juice,Grape molasses,Sesame oil,Coconut milk,Worcestershire sauce,Hot sauce,Vanilla extract,Maple syrup
+pantry|pcs|Capers,Tinned tuna,Tinned chickpeas,Tinned beans,Tinned sweetcorn,Sun-dried tomatoes,Pickles,Tomato sauce,Halva,Biscuits
+frozen|g|Frozen okra,Frozen green beans,Frozen vegetables,Frozen fish fillets,Frozen prawns,Frozen pastry
+frozen|pcs|Frozen pizza,Ice
+drinks|pcs|Greek coffee,Instant coffee,Coffee beans,Herbal tea,Mountain tea,Lemonade,Iced tea,Ouzo,Tsipouro,Soda water
+household|pcs|Dishwasher tablets,Hand soap,Shampoo,Shower gel,Toothpaste,Paper napkins,Freezer bags,Fabric softener,Bleach,Surface cleaner,Glass cleaner,Batteries,Charcoal,Matches`;
+function seedRows(){
   const rows=[];
   SEED.trim().split('\n').forEach(line=>{
     const [aisle, unit, names]=line.split('|');
     names.split(',').forEach(n=>rows.push({name:n.trim(), aisle:aisle, unit:unit}));
   });
-  try{ S.items=await api('mp_items',{method:'POST', body:rows, headers:REP.headers}); S.items.sort(byName); }
-  catch(e){ /* Not worth blocking a boot over — you can still type names by hand. */ }
+  return rows;
+}
+/* The seed grows over time, and older accounts were stocked from a shorter
+   one. This is what they're missing — offered from Settings rather than
+   added silently, so an item you deleted doesn't creep back. */
+function missingSeed(){ return seedRows().filter(r=>!itemByName(r.name)); }
+async function seedItems(rows){
+  rows=rows||seedRows();
+  if(!rows.length) return true;
+  try{ S.items=S.items.concat(await api('mp_items',{method:'POST', body:rows, headers:REP.headers})).sort(byName); return true; }
+  catch(e){ /* Not worth blocking a boot over — you can still type names by hand. */ return false; }
 }
 function byName(a,b){ return norm(a.name)<norm(b.name)?-1:1; }
 function recipeById(id){ return S.recipes.find(r=>r.id===id)||null; }
@@ -665,8 +717,47 @@ function itemPicker(placeholder, onPick){
     if(e.key==='Escape') close();
   };
   wrap.append(input, box);
+  const mic=voiceButton(heard=>{
+    /* Say the exact name of something you have and it goes straight in;
+       anything else lands in the box with suggestions, for one tap. */
+    const hit=itemByName(heard);
+    if(hit){ take(hit.name); return; }
+    input.value=heard; input.focus(); paint();
+  });
+  if(mic){ wrap.classList.add('hasmic'); wrap.append(mic); }
   wrap.input=input;
   return wrap;
+}
+/* Speech via the browser's own Web Speech API — no key, no server of ours.
+   Absent in Firefox and patchy in iOS Home Screen apps, so the button only
+   exists where the API does. Recognises in the phone's language. */
+const SpeechRec=window.SpeechRecognition||window.webkitSpeechRecognition||null;
+function voiceButton(onHeard){
+  if(!SpeechRec) return null;
+  let rec=null;
+  const btn=el('button',{type:'button', class:'mic', 'aria-label':'Say an ingredient',
+    onmousedown:e=>e.preventDefault(),
+    onclick:()=>{
+      if(rec){ rec.stop(); return; }
+      rec=new SpeechRec();
+      rec.lang=navigator.language||'en-GB';
+      rec.interimResults=false; rec.maxAlternatives=1;
+      rec.onresult=e=>{
+        const t=((e.results[0]||[])[0]||{}).transcript||'';
+        /* Safari and Chrome both like to add a full stop and a capital. */
+        const heard=t.trim().replace(/[.!?,]+$/,'');
+        if(heard) onHeard(heard.charAt(0).toUpperCase()+heard.slice(1));
+      };
+      rec.onerror=e=>{
+        if(e.error==='not-allowed'||e.error==='service-not-allowed') toast('Microphone access is off for this site.');
+        else if(e.error!=='no-speech'&&e.error!=='aborted') toast('Didn’t catch that.');
+      };
+      rec.onend=()=>{ rec=null; btn.classList.remove('on'); };
+      btn.classList.add('on');
+      try{ rec.start(); }catch(err){ rec=null; btn.classList.remove('on'); }
+    }});
+  btn.append(icon('mic'));
+  return btn;
 }
 
 /* ---------- recipes tab ---------- */
@@ -967,14 +1058,27 @@ function renderShop(){
 
 /* ---------- settings ---------- */
 function renderSettings(){
-  const used=useCounts();
+  const used=useCounts(), missing=missingSeed(), prefs=unitPrefs();
   const app=document.getElementById('app');
   fill(app,
     topbar('Settings'),
     el('section',{},
+      el('div',{class:'head'}, el('h2',{},'Units')),
+      el('p',{class:'mut', style:'margin:0 0 14px'},
+        'How weights and volumes read on the shopping list. Spoons, cloves and tins stay as written — there is no honest conversion for them.'),
+      UNIT_PREFS.map(([k,label,opts])=>el('label',{class:'unitpref'}, label,
+        el('div',{class:'quick'}, opts.map(o=>el('button',{class:prefs[k]===o?'on':'',
+          onclick:()=>{ setUnitPref(k,o); render(); }}, o==='auto'?'Auto':o)))))),
+    el('section',{},
       el('div',{class:'head'}, el('h2',{},'Ingredient list'), el('span',{class:'sub'}, S.items.length+' items')),
       el('p',{class:'mut', style:'margin:0 0 14px'},
         'Everything you type into a recipe joins this list and is offered next time. Set an aisle so it lands in the right part of the shopping list.'),
+      missing.length ? el('div',{class:'btnrow', style:'margin-bottom:14px'},
+        el('button',{onclick:async()=>{
+          try{ busy(true);
+            if(await seedItems(missing)){ render(); toast('Added '+missing.length+' ingredients', true); }
+            else toast('Couldn’t add them — try again.'); }
+          finally{ busy(false); } }}, 'Add '+missing.length+' common ingredients')) : null,
       el('div',{}, S.items.map(it=>el('div',{class:'row'},
         el('span',{class:'nm'}, it.name, (used.get(norm(it.name))||0) ? el('small',{style:'display:block;font-size:12px;color:var(--ink2)'}, 'in '+used.get(norm(it.name))+' recipe'+(used.get(norm(it.name))===1?'':'s')) : null),
         el('select',{style:'flex:none;width:132px;padding:8px 6px;font-size:13px', value:it.aisle,

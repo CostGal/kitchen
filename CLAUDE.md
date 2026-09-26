@@ -144,6 +144,10 @@ This repo is **public** (required for free GitHub Pages). So:
 Ticked-off state lives in `localStorage` (`kitchen_checked`), not the database —
 it's per-shop and disposable, and a table would cost a round trip per tap.
 
+How mass and volume *read* is a per-device preference (`kitchen_units`: Auto,
+g/kg, ml/l), applied only in `fmtAmount`. Storage and summing stay in g / ml.
+There is deliberately no preference for spoons, cloves or tins.
+
 ## Architecture (index.html)
 
 Mirrors Ledger's and Overtime's conventions:
@@ -169,6 +173,13 @@ Mirrors Ledger's and Overtime's conventions:
   your recipes already use the item, then alphabetical. Anything you type that
   isn't in the catalogue is offered as "Add …" and becomes a permanent
   `mp_items` row — that's how the list learns.
+- `voiceButton` adds a mic to every `itemPicker` where the browser has the
+  Web Speech API (no key, no server of ours). An exact catalogue match goes
+  straight in; anything else fills the box so the suggestions do the rest.
+  Siri can't reach a web app — see issue #12 for the native half.
+- `SEED` stocks a new account. Older accounts get the additions from a
+  Settings button (`missingSeed`) rather than silently on boot, so an item
+  someone deleted doesn't creep back.
 - Item usage counts are **derived** from `S.ings` (`useCounts`), not stored. The
   recipes are already in memory; a counter column would be a second source of
   truth for no gain.
