@@ -156,6 +156,12 @@ Mirrors Ledger's and Overtime's conventions:
 
 - `el(tag, props, ...kids)` is the only DOM helper; views are built with it
   directly.
+- **Every user-facing string goes through `t()`** (plurals: `tn()`). The key is
+  the English text; `EL` holds the Greek. A missing key falls back to English,
+  never blank. Language is per device (`kitchen_lang`), switched in Settings.
+  `ul()` gives Greek unit labels at render time only — stored units stay
+  `g`/`ml`/`tbsp` so `FAM` never sees them. Aisle *order* is not translated,
+  only the labels.
 - Global state `S`. All data loads once at boot (`loadAll`) — it's small
   forever — and every calculation runs in memory. Mutate `S`, call `render()`.
 - `api()` wraps `/rest/v1`, retries once on 401 after refreshing the token.

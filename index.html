@@ -257,6 +257,74 @@ let LANG=(()=>{ try{ return localStorage.getItem(LANG_KEY)==='el'?'el':'en'; }ca
 /* Display name: the Greek one when the UI is Greek and there is one. The
    English name stays canonical — it's what lines merge on. */
 function dn(x){ return x ? (LANG==='el' && x.name_el ? x.name_el : x.name) : ''; }
+/* UI strings are keyed by their English text, so a missing translation falls
+   back to English rather than to a blank. {n}/{x} are filled in by t(). */
+const EL={
+  'Recipes':'Συνταγές','Plan':'Πλάνο','Shop':'Ψώνια','Settings':'Ρυθμίσεις','+ New':'+ Νέα',
+  'No recipes yet. Tap ':'Καμία συνταγή ακόμα. Πάτα ',
+  ' and add one — the ingredient list is already stocked, so most of it is tapping, not typing.':' και πρόσθεσε μία — η λίστα υλικών είναι ήδη γεμάτη, οπότε θα πατάς πιο πολύ απ’ ό,τι θα γράφεις.',
+  '{n} ingredient':'{n} υλικό','{n} ingredients':'{n} υλικά','{n} min':'{n} λεπτά','video':'βίντεο',
+  'Remove from plan':'Αφαίρεση από το πλάνο','Add to plan':'Προσθήκη στο πλάνο',
+  '{n} serving':'{n} μερίδα','{n} servings':'{n} μερίδες',
+  'Add {n} serving to plan':'Βάλε {n} μερίδα στο πλάνο','Add {n} servings to plan':'Βάλε {n} μερίδες στο πλάνο',
+  'Added to the plan':'Μπήκε στο πλάνο','Ingredients':'Υλικά','No ingredients on this one.':'Αυτή δεν έχει υλικά.',
+  'Edit':'Αλλαγή','Cook':'Μαγείρεμα','{n} base':'{n} βάση','In this week’s plan':'Στο πλάνο της εβδομάδας','Method':'Εκτέλεση',
+  'Ingredients · {n} serv':'Υλικά · {n} μερ.','Step {i} of {n}':'Βήμα {i} από {n}','Close':'Κλείσιμο','Back':'Πίσω','Next':'Επόμενο','Done':'Τέλος',
+  'Quantity for {x}':'Ποσότητα για {x}','Unit for {x}':'Μονάδα για {x}','Remove {x}':'Αφαίρεση: {x}','unit':'μον.',
+  'Add ingredient…':'Πρόσθεσε υλικό…','Edit recipe':'Αλλαγή συνταγής','New recipe':'Νέα συνταγή','Title':'Τίτλος','Serves':'Μερίδες','Time':'Χρόνος',
+  'Gemista':'Γεμιστά','Paste any YouTube link':'Επικόλλησε οποιοδήποτε link του YouTube','one step per line':'ένα βήμα ανά γραμμή',
+  'Chop the onions\nFry until soft\n…':'Ψιλοκόβεις τα κρεμμύδια\nΤα σοτάρεις να μαλακώσουν\n…',
+  'Numbering is added for you — paste a numbered list and it will be stripped.':'Η αρίθμηση μπαίνει μόνη της — αν επικολλήσεις αριθμημένη λίστα, οι αριθμοί φεύγουν.',
+  'Note':'Σημείωση','optional':'προαιρετικό','Freezes well. Double the sauce.':'Καταψύχεται. Διπλή σάλτσα.',
+  'Give it a title.':'Δώσ’ της έναν τίτλο.','That does not look like a YouTube link.':'Αυτό δε μοιάζει με link του YouTube.',
+  'Saved':'Αποθηκεύτηκε','Save':'Αποθήκευση','Add recipe':'Προσθήκη','Cancel':'Άκυρο','Delete “{x}”?':'Διαγραφή «{x}»;','Deleted':'Διαγράφηκε','Delete':'Διαγραφή',
+  'Clear the whole plan?':'Να αδειάσει όλο το πλάνο;','Clear':'Άδειασμα',
+  '{n} recipe':'{n} συνταγή','{n} recipes':'{n} συνταγές','{n} thing to buy':'{n} πράγμα για αγορά','{n} things to buy':'{n} πράγματα για αγορά',
+  'Nothing planned. Go to ':'Τίποτα στο πλάνο. Πήγαινε στις ',
+  ' and tap + on whatever you fancy this week — the shopping list builds itself.':' και πάτα + σε ό,τι σου κάνει κέφι αυτή την εβδομάδα — η λίστα για ψώνια φτιάχνεται μόνη της.',
+  'Something else…':'Κάτι άλλο…','{n} left':'{n} ακόμα','Reset':'Από την αρχή',
+  'Nothing to buy. Add recipes to the ':'Τίποτα για αγορά. Βάλε συνταγές στο ',
+  ', or type anything you need into the box above.':' ή γράψε ό,τι χρειάζεσαι στο πεδίο από πάνω.',
+  'Language':'Γλώσσα','Units':'Μονάδες',
+  'How weights and volumes read on the shopping list. Spoons, cloves and tins stay as written — there is no honest conversion for them.':'Πώς φαίνονται τα βάρη και οι όγκοι στη λίστα για ψώνια. Κουταλιές, σκελίδες και κονσέρβες μένουν όπως γράφτηκαν — δεν υπάρχει τίμια μετατροπή γι’ αυτές.',
+  'Weight':'Βάρος','Volume':'Όγκος','Auto':'Αυτόματα',
+  'Ingredient list':'Λίστα υλικών','{n} items':'{n} υλικά',
+  'Everything you type into a recipe joins this list and is offered next time. Set an aisle so it lands in the right part of the shopping list.':'Ό,τι γράφεις σε μια συνταγή μπαίνει σε αυτή τη λίστα και σου προτείνεται την επόμενη φορά. Όρισε διάδρομο για να πέφτει στο σωστό σημείο της λίστας για ψώνια.',
+  'Added {n} ingredients':'Προστέθηκαν {n} υλικά','Couldn’t add them — try again.':'Δεν προστέθηκαν — δοκίμασε ξανά.','Add {n} common ingredients':'Πρόσθεσε {n} βασικά υλικά',
+  'Greek name for {x}':'Ελληνικό όνομα για {x}','“{v}” is already {x}.':'Το «{v}» υπάρχει ήδη: {x}.','Aisle for {x}':'Διάδρομος για {x}',
+  'in {n} recipe':'σε {n} συνταγή','in {n} recipes':'σε {n} συνταγές',
+  'Account':'Λογαριασμός','Same account as Ledger and Overtime.':'Ίδιος λογαριασμός με Ledger και Overtime.','Sign out':'Αποσύνδεση',
+  'Your other apps':'Οι άλλες σου εφαρμογές','Same account, same sign-in — no need to sign in again.':'Ίδιος λογαριασμός, ίδια σύνδεση — δε χρειάζεται να ξανασυνδεθείς.',
+  'Something went wrong.':'Κάτι πήγε στραβά.','Wrong email or password.':'Λάθος email ή κωδικός.',
+  'Password':'Κωδικός','Check your email for the reset link.':'Δες το email σου για το link επαναφοράς.',
+  'We’ll email you a link to set a new password.':'Θα σου στείλουμε email με link για νέο κωδικό.',
+  'One account for Ledger, Overtime and Kitchen — sign in once and all three open.':'Ένας λογαριασμός για Ledger, Overtime και Kitchen — συνδέεσαι μία φορά και ανοίγουν και τα τρία.',
+  'Sign in with your Ledger / Overtime account.':'Σύνδεση με τον λογαριασμό σου στο Ledger / Overtime.',
+  'Send link':'Αποστολή link','Sign in':'Σύνδεση','Back to sign in':'Πίσω στη σύνδεση','Forgot password?':'Ξέχασες τον κωδικό;',
+  'New password':'Νέος κωδικός','Try again':'Δοκίμασε ξανά',
+  'Say an ingredient':'Πες ένα υλικό','Microphone access is off for this site.':'Το μικρόφωνο είναι κλειστό για αυτή τη σελίδα.','Didn’t catch that.':'Δεν το έπιασα.',
+  'Add “{x}”':'Προσθήκη «{x}»','New':'Νέο','Play recipe video':'Αναπαραγωγή βίντεο','Recipe video':'Βίντεο συνταγής','Play':'Αναπαραγωγή',
+  'Less':'Λιγότερες','More':'Περισσότερες',
+  'That recipe no longer exists — it may have been deleted on another device.':'Η συνταγή δεν υπάρχει πια — ίσως διαγράφηκε από άλλη συσκευή.',
+  'Fruit & veg':'Μανάβικο','Bakery':'Φούρνος','Meat':'Κρέας','Fish':'Ψάρι','Dairy & eggs':'Γαλακτοκομικά',
+  'Pantry':'Ντουλάπι','Frozen':'Κατεψυγμένα','Drinks':'Ποτά','Household':'Σπίτι','Other':'Άλλα'
+};
+function t(s, v){
+  let r=(LANG==='el' && EL[s]) || s;
+  if(v) for(const k in v) r=r.split('{'+k+'}').join(String(v[k]));
+  return r;
+}
+function tn(n, one, many, v){ return t(n===1?one:many, Object.assign({n:n}, v||{})); }
+/* Greek unit labels are display-only. Stored units stay g/ml/tbsp…, so FAM's
+   maths never sees a Greek abbreviation. */
+const UNIT_EL={g:'γρ.', kg:'κιλά', l:'λίτρα', pcs:'τεμ.', tbsp:'κ.σ.', tsp:'κ.γ.', clove:'σκελ.', cloves:'σκελ.',
+  bunch:'ματσάκι', tin:'κονσ.', pack:'συσκ.', pinch:'πρέζα'};
+function ul(u){ return (LANG==='el' && UNIT_EL[u]) || u; }
+function setLang(l){
+  LANG=l==='el'?'el':'en';
+  try{ localStorage.setItem(LANG_KEY, LANG); }catch(e){}
+  document.documentElement.lang=LANG;
+}
 
 /* ---------- utils ---------- */
 /* Stroke-only marks, sized in em so they inherit colour and size from whatever
@@ -438,10 +506,10 @@ function fmtAmount(qty, unit){
   const p=unitPrefs();
   /* Three decimals once scaled up, so 5 g still reads 0.005 kg, not 0.01. */
   const k=n=>String(Math.round(n*1000)/1000);
-  if(unit==='g'  && big(qty,'g', p.mass)) return k(qty/1000)+' kg';
-  if(unit==='ml' && big(qty,'ml',p.vol))  return k(qty/1000)+' l';
+  if(unit==='g'  && big(qty,'g', p.mass)) return k(qty/1000)+' '+ul('kg');
+  if(unit==='ml' && big(qty,'ml',p.vol))  return k(qty/1000)+' '+ul('l');
   if(unit==='pcs') return '× '+num(qty);
-  return num(qty)+' '+unit;
+  return num(qty)+' '+ul(unit);
 }
 
 /* ---------- state ---------- */
@@ -592,7 +660,7 @@ function shopList(){
   const groups=[];
   for(const [id,label] of AISLES){
     const rows=[...map.values()].filter(l=>l.aisle===id).sort((a,b)=>bare(dn(a))<bare(dn(b))?-1:1);
-    if(rows.length) groups.push({id:id, label:label, rows:rows});
+    if(rows.length) groups.push({id:id, label:t(label), rows:rows});
   }
   return groups;
 }
@@ -614,14 +682,14 @@ function ytId(s){
   return m?m[1]:'';
 }
 function videoTile(id){
-  const box=el('div',{class:'vid', role:'button', tabindex:'0', 'aria-label':'Play recipe video'});
-  const btn=el('button',{class:'play','aria-label':'Play'}); btn.innerHTML=ICONS.play;
+  const box=el('div',{class:'vid', role:'button', tabindex:'0', 'aria-label':t('Play recipe video')});
+  const btn=el('button',{class:'play','aria-label':t('Play')}); btn.innerHTML=ICONS.play;
   box.append(el('img',{src:'https://i.ytimg.com/vi/'+id+'/hqdefault.jpg', alt:'', loading:'lazy'}), btn);
   const open=()=>{
     fill(box, el('iframe',{
       src:'https://www.youtube-nocookie.com/embed/'+id+'?autoplay=1&rel=0&playsinline=1',
       allow:'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture',
-      allowfullscreen:'', title:'Recipe video'}));
+      allowfullscreen:'', title:t('Recipe video')}));
     box.style.cursor='default';
   };
   box.onclick=open;
@@ -653,7 +721,7 @@ async function saveRecipe(d){
     let rec;
     if(d.id){
       const r=await api('mp_recipes?id=eq.'+d.id,{method:'PATCH', body:body, headers:REP.headers});
-      if(!r[0]) throw new Error('That recipe no longer exists — it may have been deleted on another device.');
+      if(!r[0]) throw new Error(t('That recipe no longer exists — it may have been deleted on another device.'));
       rec=r[0]; S.recipes=S.recipes.map(x=>x.id===rec.id?rec:x);
       await api('mp_recipe_items?recipe_id=eq.'+d.id,{method:'DELETE'});
       S.ings=S.ings.filter(i=>i.recipe_id!==d.id);
@@ -714,7 +782,7 @@ function topbar(title, right){
 }
 function backBar(title, right){
   return el('div',{class:'topbar'},
-    el('div',{class:'nav'}, el('button',{class:'ico-only','aria-label':'Back', onclick:()=>{ S.recipe=null; S.draft=null; render(); }},'←')),
+    el('div',{class:'nav'}, el('button',{class:'ico-only','aria-label':t('Back'), onclick:()=>{ S.recipe=null; S.draft=null; render(); }},'←')),
     el('h1',{style:'flex:1;min-width:0;font-size:18px;letter-spacing:.04em'}, title),
     el('div',{class:'nav'}, right||[]));
 }
@@ -723,8 +791,8 @@ function stepper(value, onChange, suffix, min, max){
   const val=el('div',{class:'val'});
   const paint=()=>{ fill(val, String(value), suffix?el('small',{},suffix):null); };
   const step=n=>()=>{ value=Math.max(min==null?1:min, Math.min(max==null?99:max, value+n)); paint(); onChange(value); };
-  box.append(el('button',{'aria-label':'Less', onclick:step(-1)},'−'), val,
-             el('button',{'aria-label':'More', onclick:step(1)},'+'));
+  box.append(el('button',{'aria-label':t('Less'), onclick:step(-1)},'−'), val,
+             el('button',{'aria-label':t('More'), onclick:step(1)},'+'));
   paint(); return box;
 }
 /* One catalogue picker, used by the recipe form and by the shopping list's
@@ -740,9 +808,9 @@ function itemPicker(placeholder, onPick){
     const q=input.value, list=suggest(q), exact=q.trim() && itemByName(q);
     const kids=list.map(i=>{ const other=LANG==='el'?(i.name_el?i.name:null):i.name_el;
       return el('button',{type:'button', onmousedown:e=>e.preventDefault(), onclick:()=>take(i.name)},
-        el('span',{class:'nm'}, dn(i), other?el('small',{}, ' · '+other):null), el('span',{class:'al'}, AISLE_NAME[i.aisle]||'Other')); });
+        el('span',{class:'nm'}, dn(i), other?el('small',{}, ' · '+other):null), el('span',{class:'al'}, t(AISLE_NAME[i.aisle]||'Other'))); });
     if(q.trim() && !exact) kids.push(el('button',{class:'new', type:'button', onmousedown:e=>e.preventDefault(), onclick:()=>take(q.trim())},
-      el('span',{class:'nm'},'Add “'+q.trim()+'”'), el('span',{class:'al'},'New')));
+      el('span',{class:'nm'}, t('Add “{x}”',{x:q.trim()})), el('span',{class:'al'}, t('New'))));
     if(!kids.length){ close(); return; }
     fill(box, kids); box.hidden=false;
   };
@@ -776,12 +844,12 @@ const SpeechRec=window.SpeechRecognition||window.webkitSpeechRecognition||null;
 function voiceButton(onHeard){
   if(!SpeechRec) return null;
   let rec=null;
-  const btn=el('button',{type:'button', class:'mic', 'aria-label':'Say an ingredient',
+  const btn=el('button',{type:'button', class:'mic', 'aria-label':t('Say an ingredient'),
     onmousedown:e=>e.preventDefault(),
     onclick:()=>{
       if(rec){ rec.stop(); return; }
       rec=new SpeechRec();
-      rec.lang=navigator.language||'en-GB';
+      rec.lang=LANG==='el' ? 'el-GR' : (navigator.language||'en-GB');
       rec.interimResults=false; rec.maxAlternatives=1;
       rec.onresult=e=>{
         const t=((e.results[0]||[])[0]||{}).transcript||'';
@@ -790,8 +858,8 @@ function voiceButton(onHeard){
         if(heard) onHeard(heard.charAt(0).toUpperCase()+heard.slice(1));
       };
       rec.onerror=e=>{
-        if(e.error==='not-allowed'||e.error==='service-not-allowed') toast('Microphone access is off for this site.');
-        else if(e.error!=='no-speech'&&e.error!=='aborted') toast('Didn’t catch that.');
+        if(e.error==='not-allowed'||e.error==='service-not-allowed') toast(t('Microphone access is off for this site.'));
+        else if(e.error!=='no-speech'&&e.error!=='aborted') toast(t('Didn’t catch that.'));
       };
       rec.onend=()=>{ rec=null; btn.classList.remove('on'); };
       btn.classList.add('on');
@@ -805,23 +873,23 @@ function voiceButton(onHeard){
 function renderRecipes(){
   const app=document.getElementById('app');
   fill(app,
-    topbar('Recipes', el('button',{class:'pri', onclick:()=>{ S.draft=blankDraft(); S.recipe='new'; render(); }},'+ New')),
+    topbar(t('Recipes'), el('button',{class:'pri', onclick:()=>{ S.draft=blankDraft(); S.recipe='new'; render(); }}, t('+ New'))),
     S.recipes.length
       ? el('div',{class:'cards'}, S.recipes.map(recipeCard))
-      : el('div',{class:'empty'}, 'No recipes yet. Tap ', el('b',{style:'color:var(--acc)'},'+ New'),
-          ' and add one — the ingredient list is already stocked, so most of it is tapping, not typing.'),
+      : el('div',{class:'empty'}, t('No recipes yet. Tap '), el('b',{style:'color:var(--acc)'}, t('+ New')),
+          t(' and add one — the ingredient list is already stocked, so most of it is tapping, not typing.')),
     tabbar());
 }
 function recipeCard(r){
   const n=ingsOf(r.id).length, b=inBasket(r.id);
-  const bits=[n+' ingredient'+(n===1?'':'s')];
-  if(r.minutes) bits.push(r.minutes+' min');
-  if(r.video) bits.push('video');
+  const bits=[tn(n,'{n} ingredient','{n} ingredients')];
+  if(r.minutes) bits.push(t('{n} min',{n:r.minutes}));
+  if(r.video) bits.push(t('video'));
   const card=el('button',{class:'card'+(b?' on':''), onclick:()=>{ S.recipe=r.id; S.servings=b?b.servings:r.servings; render(); }},
     r.video ? el('img',{class:'thumb', src:'https://i.ytimg.com/vi/'+r.video+'/default.jpg', alt:'', loading:'lazy'})
             : el('span',{class:'thumb none'}, icon('pot')),
     el('span',{class:'txt'}, el('b',{}, r.title), el('small',{}, bits.join(' · '))));
-  const add=el('button',{class:'add'+(b?' on':''), 'aria-label':b?'Remove from plan':'Add to plan',
+  const add=el('button',{class:'add'+(b?' on':''), 'aria-label':t(b?'Remove from plan':'Add to plan'),
     onclick:async e=>{ e.stopPropagation();
       try{ await setBasket(r.id, b?null:r.servings); render(); }catch(err){ toast(err.message); } }});
   add.append(b?icon('check'):document.createTextNode('+'));
@@ -846,43 +914,43 @@ function renderRecipe(){
   const cta=el('button',{});
   const paint=()=>{
     const factor=serv/(r.servings||1);
-    fill(count, serv+' serving'+(serv===1?'':'s'));
+    fill(count, tn(serv,'{n} serving','{n} servings'));
     fill(list, rows.map(i=>el('div',{class:'row'},
       el('span',{class:'nm'}, dn(i)),
-      el('span',{class:'v'}, i.qty==null ? '—' : el('b',{}, num(i.qty*factor)+(i.unit?' '+i.unit:''))))));
-    fill(cta, b ? 'Remove from plan' : 'Add '+serv+' serving'+(serv===1?'':'s')+' to plan');
+      el('span',{class:'v'}, i.qty==null ? '—' : el('b',{}, num(i.qty*factor)+(i.unit?' '+ul(i.unit):''))))));
+    fill(cta, b ? t('Remove from plan') : tn(serv,'Add {n} serving to plan','Add {n} servings to plan'));
   };
   cta.className=b?'':'pri';
   cta.onclick=async()=>{
-    try{ await setBasket(r.id, b?null:serv); render(); if(!b) toast('Added to the plan', true); }
+    try{ await setBasket(r.id, b?null:serv); render(); if(!b) toast(t('Added to the plan'), true); }
     catch(e){ toast(e.message); }
   };
 
   const servRow=el('section',{},
-    el('div',{class:'head'}, el('h2',{},'Ingredients'), count),
+    el('div',{class:'head'}, el('h2',{}, t('Ingredients')), count),
     stepper(serv, async v=>{
       serv=v; S.servings=v; paint();
       /* Already planned? Then this stepper IS the plan's serving count —
          silently disagreeing with the Plan tab would be worse than a write. */
       if(b){ try{ await setBasket(r.id, v); renderShopCount(); }catch(e){ toast(e.message); } }
     }, null, 1, 99),
-    rows.length ? list : el('div',{class:'empty'},'No ingredients on this one.'));
+    rows.length ? list : el('div',{class:'empty'}, t('No ingredients on this one.')));
   paint();
 
   fill(app,
     backBar(r.title, [
-      el('button',{onclick:()=>{ S.draft=draftFrom(r); render(); }},'Edit'),
-      rows.length||r.steps.length ? el('button',{class:'pri', onclick:()=>startCook(r)},'Cook') : null
+      el('button',{onclick:()=>{ S.draft=draftFrom(r); render(); }}, t('Edit')),
+      rows.length||r.steps.length ? el('button',{class:'pri', onclick:()=>startCook(r)}, t('Cook')) : null
     ]),
     r.video ? videoTile(r.video) : null,
     el('div',{class:'meta'},
-      el('span',{}, icon('users'), r.servings+' base'),
-      r.minutes ? el('span',{}, icon('clock'), r.minutes+' min') : null,
-      b ? el('span',{style:'color:var(--acc)'}, icon('check'),'In this week’s plan') : null),
+      el('span',{}, icon('users'), t('{n} base',{n:r.servings})),
+      r.minutes ? el('span',{}, icon('clock'), t('{n} min',{n:r.minutes})) : null,
+      b ? el('span',{style:'color:var(--acc)'}, icon('check'), t('In this week’s plan')) : null),
     r.note ? el('div',{class:'status'}, r.note) : null,
     servRow,
     r.steps.length ? el('section',{},
-      el('div',{class:'head'}, el('h2',{},'Method')),
+      el('div',{class:'head'}, el('h2',{}, t('Method'))),
       el('ol',{class:'steps'}, r.steps.map(s=>el('li',{}, s)))) : null,
     el('div',{class:'btnrow'}, cta),
     tabbar());
@@ -906,18 +974,18 @@ function renderCook(){
   const body=p.ing
     ? el('div',{style:'width:100%'}, ingsOf(r.id).map(x=>el('div',{class:'row'},
         el('span',{class:'nm'}, dn(x)),
-        el('span',{class:'v'}, x.qty==null?'—':el('b',{}, num(x.qty*factor)+(x.unit?' '+x.unit:''))))))
+        el('span',{class:'v'}, x.qty==null?'—':el('b',{}, num(x.qty*factor)+(x.unit?' '+ul(x.unit):''))))))
     : el('p',{}, p.text);
   fill(document.getElementById('app'),el('div',{class:'cook'},
     el('div',{class:'bar'},
-      el('span',{class:'n'}, p.ing?'Ingredients · '+serv+' serv':'Step '+i+' of '+(pages.length-1)),
-      el('button',{'aria-label':'Close', onclick:()=>{ S.cook=null; releaseScreen(); render(); }},'×')),
+      el('span',{class:'n'}, p.ing ? t('Ingredients · {n} serv',{n:serv}) : t('Step {i} of {n}',{i:i, n:pages.length-1})),
+      el('button',{'aria-label':t('Close'), onclick:()=>{ S.cook=null; releaseScreen(); render(); }},'×')),
     el('div',{class:'body'}, body),
     el('div',{class:'ticks'}, pages.map((_,n)=>el('i',{class:n<=i?'on':''}))),
     el('div',{class:'btnrow'},
-      el('button',{disabled:i===0, onclick:go(-1)},'Back'),
-      i<pages.length-1 ? el('button',{class:'pri', onclick:go(1)},'Next')
-                       : el('button',{class:'pri', onclick:()=>{ S.cook=null; releaseScreen(); render(); }},'Done'))));
+      el('button',{disabled:i===0, onclick:go(-1)}, t('Back')),
+      i<pages.length-1 ? el('button',{class:'pri', onclick:go(1)}, t('Next'))
+                       : el('button',{class:'pri', onclick:()=>{ S.cook=null; releaseScreen(); render(); }}, t('Done')))));
 }
 
 /* ---------- recipe form ---------- */
@@ -936,15 +1004,15 @@ function renderForm(){
   const paintIngs=()=>{
     fill(ings, d.rows.map((row,idx)=>el('div',{class:'ing'},
       el('input',{class:'q', type:'text', inputmode:'decimal', placeholder:'–', value:row.qty,
-        'aria-label':'Quantity for '+row.name, oninput:e=>{ row.qty=e.target.value; }}),
-      el('input',{class:'u', type:'text', placeholder:'unit', value:row.unit, list:'units',
-        'aria-label':'Unit for '+row.name, oninput:e=>{ row.unit=e.target.value; }}),
+        'aria-label':t('Quantity for {x}',{x:row.name}), oninput:e=>{ row.qty=e.target.value; }}),
+      el('input',{class:'u', type:'text', placeholder:t('unit'), value:row.unit, list:'units',
+        'aria-label':t('Unit for {x}',{x:row.name}), oninput:e=>{ row.unit=e.target.value; }}),
       el('span',{class:'nm'}, dn(itemByName(row.name)||row)),
-      el('button',{class:'x', type:'button','aria-label':'Remove '+row.name,
+      el('button',{class:'x', type:'button','aria-label':t('Remove {x}',{x:row.name}),
         onclick:()=>{ d.rows.splice(idx,1); paintIngs(); }},'×'))));
   };
   paintIngs();
-  const picker=itemPicker('Add ingredient…', name=>{
+  const picker=itemPicker(t('Add ingredient…'), name=>{
     const it=itemByName(name);
     d.rows.push({name:name, qty:'', unit:(it&&it.unit)||''});
     paintIngs();
@@ -955,53 +1023,53 @@ function renderForm(){
   paintVid();
 
   fill(app,
-    backBar(editing?'Edit recipe':'New recipe'),
+    backBar(t(editing?'Edit recipe':'New recipe')),
     el('div',{class:'form'+(editing?' editing':'')},
-      el('label',{},'Title', el('input',{type:'text', value:d.title, placeholder:'Gemista',
+      el('label',{}, t('Title'), el('input',{type:'text', value:d.title, placeholder:t('Gemista'),
         autocapitalize:'sentences', oninput:e=>{ d.title=e.target.value; }})),
-      el('label',{},'Serves', stepper(d.servings, v=>{ d.servings=v; }, null, 1, 99)),
-      el('label',{},'Time', el('div',{class:'quick'}, [15,30,45,60,90].map(m=>{
+      el('label',{}, t('Serves'), stepper(d.servings, v=>{ d.servings=v; }, null, 1, 99)),
+      el('label',{}, t('Time'), el('div',{class:'quick'}, [15,30,45,60,90].map(m=>{
         const b=el('button',{type:'button', class:d.minutes===m?'on':'', onclick:()=>{
           d.minutes=d.minutes===m?null:m;
           [...b.parentNode.children].forEach(x=>x.classList.toggle('on', +x.dataset.m===d.minutes));
-        }}, m+' min');
+        }}, t('{n} min',{n:m}));
         b.dataset.m=m; return b;
       }))),
-      el('label',{},'YouTube', el('input',{type:'url', value:d.video, placeholder:'Paste any YouTube link',
+      el('label',{},'YouTube', el('input',{type:'url', value:d.video, placeholder:t('Paste any YouTube link'),
         inputmode:'url', autocapitalize:'off', autocorrect:'off', spellcheck:'false',
         oninput:e=>{ d.video=e.target.value; }, onchange:paintVid, onblur:paintVid})),
       vid),
 
     el('section',{},
-      el('div',{class:'head'}, el('h2',{},'Ingredients'), el('span',{class:'sub'}, d.rows.length||'')),
+      el('div',{class:'head'}, el('h2',{}, t('Ingredients')), el('span',{class:'sub'}, d.rows.length||'')),
       picker,
       ings),
 
     el('section',{},
-      el('div',{class:'head'}, el('h2',{},'Method'), el('span',{class:'sub'},'one step per line')),
-      el('textarea',{rows:'7', placeholder:'Chop the onions\nFry until soft\n…',
+      el('div',{class:'head'}, el('h2',{}, t('Method')), el('span',{class:'sub'}, t('one step per line'))),
+      el('textarea',{rows:'7', placeholder:t('Chop the onions\nFry until soft\n…'),
         oninput:e=>{ d.steps=e.target.value; }}, d.steps),
-      el('p',{class:'mut', style:'margin:8px 0 0'},'Numbering is added for you — paste a numbered list and it will be stripped.')),
+      el('p',{class:'mut', style:'margin:8px 0 0'},t('Numbering is added for you — paste a numbered list and it will be stripped.'))),
 
     el('section',{},
-      el('div',{class:'head'}, el('h2',{},'Note'), el('span',{class:'sub'},'optional')),
-      el('textarea',{rows:'2', placeholder:'Freezes well. Double the sauce.',
+      el('div',{class:'head'}, el('h2',{}, t('Note')), el('span',{class:'sub'}, t('optional'))),
+      el('textarea',{rows:'2', placeholder:t('Freezes well. Double the sauce.'),
         oninput:e=>{ d.note=e.target.value; }}, d.note)),
 
     msg,
     el('div',{class:'btnrow'},
       el('button',{class:'pri', onclick:async()=>{
-        if(!d.title.trim()){ msg.textContent='Give it a title.'; msg.className='msg err'; return; }
-        if(d.video.trim() && !ytId(d.video)){ msg.textContent='That does not look like a YouTube link.'; msg.className='msg err'; return; }
-        try{ const rec=await saveRecipe(d); S.draft=null; S.recipe=rec.id; S.servings=rec.servings; render(); toast('Saved', true); }
+        if(!d.title.trim()){ msg.textContent=t('Give it a title.'); msg.className='msg err'; return; }
+        if(d.video.trim() && !ytId(d.video)){ msg.textContent=t('That does not look like a YouTube link.'); msg.className='msg err'; return; }
+        try{ const rec=await saveRecipe(d); S.draft=null; S.recipe=rec.id; S.servings=rec.servings; render(); toast(t('Saved'), true); }
         catch(e){ msg.textContent=e.message; msg.className='msg err'; }
-      }}, editing?'Save':'Add recipe'),
-      el('button',{onclick:()=>{ S.draft=null; if(!editing) S.recipe=null; render(); }},'Cancel'),
+      }}, t(editing?'Save':'Add recipe')),
+      el('button',{onclick:()=>{ S.draft=null; if(!editing) S.recipe=null; render(); }}, t('Cancel')),
       editing ? el('button',{class:'danger', onclick:async()=>{
-        if(!confirm('Delete “'+d.title+'”?')) return;
-        try{ await deleteRecipe(d.id); S.draft=null; S.recipe=null; render(); toast('Deleted', true); }
+        if(!confirm(t('Delete “{x}”?',{x:d.title}))) return;
+        try{ await deleteRecipe(d.id); S.draft=null; S.recipe=null; render(); toast(t('Deleted'), true); }
         catch(e){ toast(e.message); }
-      }},'Delete') : null),
+      }}, t('Delete')) : null),
     el('datalist',{id:'units'}, UNITS.map(u=>el('option',{value:u}))),
     tabbar());
 }
@@ -1011,27 +1079,27 @@ function renderPlan(){
   const rows=S.basket.map(b=>({b:b, r:recipeById(b.recipe_id)})).filter(x=>x.r);
   const app=document.getElementById('app');
   fill(app,
-    topbar('Plan', rows.length ? el('button',{onclick:async()=>{
-      if(!confirm('Clear the whole plan?')) return;
+    topbar(t('Plan'), rows.length ? el('button',{onclick:async()=>{
+      if(!confirm(t('Clear the whole plan?'))) return;
       try{ busy(true); await api('mp_basket?recipe_id=not.is.null',{method:'DELETE'}); S.basket=[]; render(); }
       catch(e){ toast(e.message); } finally{ busy(false); }
-    }},'Clear') : null),
+    }}, t('Clear')) : null),
     rows.length ? el('div',{},
       el('p',{class:'mut', style:'margin:0 0 16px'},
-        rows.length+' recipe'+(rows.length===1?'':'s')+' · '+
-        rows.reduce((n,x)=>n+x.b.servings,0)+' servings · '+
-        shopList().reduce((n,g)=>n+g.rows.length,0)+' things to buy'),
+        tn(rows.length,'{n} recipe','{n} recipes')+' · '+
+        tn(rows.reduce((n,x)=>n+x.b.servings,0),'{n} serving','{n} servings')+' · '+
+        tn(shopList().reduce((n,g)=>n+g.rows.length,0),'{n} thing to buy','{n} things to buy')),
       el('div',{class:'cards'}, rows.map(({b,r})=>el('div',{class:'card on', style:'flex-wrap:wrap'},
         r.video ? el('img',{class:'thumb', src:'https://i.ytimg.com/vi/'+r.video+'/default.jpg', alt:'', loading:'lazy'})
                 : el('span',{class:'thumb none'}, icon('pot')),
         el('button',{class:'txt', style:'background:none;border:0;padding:0;text-align:left',
           onclick:()=>{ S.recipe=r.id; S.servings=b.servings; render(); }},
-          el('b',{}, r.title), el('small',{}, b.servings+' serving'+(b.servings===1?'':'s'))),
+          el('b',{}, r.title), el('small',{}, tn(b.servings,'{n} serving','{n} servings'))),
         el('div',{style:'flex:none;width:126px'},
           stepper(b.servings, async v=>{ try{ await setBasket(r.id, v); renderShopCount(); }catch(e){ toast(e.message); } }, null, 1, 99))
       )))
-    ) : el('div',{class:'empty'},'Nothing planned. Go to ', el('b',{style:'color:var(--acc)'},'Recipes'),
-        ' and tap + on whatever you fancy this week — the shopping list builds itself.'),
+    ) : el('div',{class:'empty'}, t('Nothing planned. Go to '), el('b',{style:'color:var(--acc)'}, t('Recipes')),
+        t(' and tap + on whatever you fancy this week — the shopping list builds itself.')),
     tabbar());
 }
 /* The Plan servings stepper changes the Shop badge but nothing else on screen,
@@ -1067,33 +1135,33 @@ function renderShop(){
         /* Patch the counter in place — a render() here would scroll a
            half-finished shop back to the top. */
         const c=document.getElementById('shopcount');
-        if(c) c.textContent=groups.reduce((n,g2)=>n+g2.rows.filter(r=>!set.has(r.key)).length,0)+' left';
+        if(c) c.textContent=t('{n} left',{n:groups.reduce((n,g2)=>n+g2.rows.filter(r=>!set.has(r.key)).length,0)});
       };
       /* One-off items get a visible ×. Long-press was the obvious gesture, but
          iOS Safari fires the system callout instead of contextmenu, which would
          make an extra unremovable on the one device this is built for. */
       if(L.extra) list.append(el('div',{class:'shopline'}, btn,
-        el('button',{class:'x', type:'button', 'aria-label':'Remove '+dn(L), onclick:async()=>{
+        el('button',{class:'x', type:'button', 'aria-label':t('Remove {x}',{x:dn(L)}), onclick:async()=>{
           try{ await delExtra(L.extra.id); render(); }catch(err){ toast(err.message); }
         }},'×')));
       else list.append(btn);
     });
   });
 
-  const adder=itemPicker('Something else…', async name=>{
+  const adder=itemPicker(t('Something else…'), async name=>{
     try{ await addExtra(name, null, (itemByName(name)||{}).unit||null); render(); }
     catch(e){ toast(e.message); }
   });
 
   fill(app,
-    topbar('Shop', [
-      el('span',{class:'sub', id:'shopcount', style:'font-size:13px;color:var(--ink2)'}, left+' left'),
-      total ? el('button',{onclick:()=>{ setChecked(new Set()); render(); }},'Reset') : null
+    topbar(t('Shop'), [
+      el('span',{class:'sub', id:'shopcount', style:'font-size:13px;color:var(--ink2)'}, t('{n} left',{n:left})),
+      total ? el('button',{onclick:()=>{ setChecked(new Set()); render(); }}, t('Reset')) : null
     ]),
     adder,
     total ? el('div',{style:'margin-top:22px'}, list)
-          : el('div',{class:'empty'},'Nothing to buy. Add recipes to the ', el('b',{style:'color:var(--acc)'},'Plan'),
-              ', or type anything you need into the box above.'),
+          : el('div',{class:'empty'}, t('Nothing to buy. Add recipes to the '), el('b',{style:'color:var(--acc)'}, t('Plan')),
+              t(', or type anything you need into the box above.')),
     tabbar());
 }
 
@@ -1102,46 +1170,50 @@ function renderSettings(){
   const used=useCounts(), missing=missingSeed(), prefs=unitPrefs();
   const app=document.getElementById('app');
   fill(app,
-    topbar('Settings'),
+    topbar(t('Settings')),
     el('section',{},
-      el('div',{class:'head'}, el('h2',{},'Units')),
+      el('div',{class:'head'}, el('h2',{}, t('Language'))),
+      el('div',{class:'quick'}, [['en','English'],['el','Ελληνικά']].map(([l,label])=>el('button',{lang:l, class:LANG===l?'on':'',
+        onclick:()=>{ setLang(l); render(); }}, label)))),
+    el('section',{},
+      el('div',{class:'head'}, el('h2',{}, t('Units'))),
       el('p',{class:'mut', style:'margin:0 0 14px'},
-        'How weights and volumes read on the shopping list. Spoons, cloves and tins stay as written — there is no honest conversion for them.'),
-      UNIT_PREFS.map(([k,label,opts])=>el('label',{class:'unitpref'}, label,
+        t('How weights and volumes read on the shopping list. Spoons, cloves and tins stay as written — there is no honest conversion for them.')),
+      UNIT_PREFS.map(([k,label,opts])=>el('label',{class:'unitpref'}, t(label),
         el('div',{class:'quick'}, opts.map(o=>el('button',{class:prefs[k]===o?'on':'',
-          onclick:()=>{ setUnitPref(k,o); render(); }}, o==='auto'?'Auto':o)))))),
+          onclick:()=>{ setUnitPref(k,o); render(); }}, o==='auto'?t('Auto'):ul(o))))))),
     el('section',{},
-      el('div',{class:'head'}, el('h2',{},'Ingredient list'), el('span',{class:'sub'}, S.items.length+' items')),
+      el('div',{class:'head'}, el('h2',{}, t('Ingredient list')), el('span',{class:'sub'}, t('{n} items',{n:S.items.length}))),
       el('p',{class:'mut', style:'margin:0 0 14px'},
-        'Everything you type into a recipe joins this list and is offered next time. Set an aisle so it lands in the right part of the shopping list.'),
+        t('Everything you type into a recipe joins this list and is offered next time. Set an aisle so it lands in the right part of the shopping list.')),
       missing.length ? el('div',{class:'btnrow', style:'margin-bottom:14px'},
         el('button',{onclick:async()=>{
           try{ busy(true);
-            if(await seedItems(missing)){ render(); toast('Added '+missing.length+' ingredients', true); }
-            else toast('Couldn’t add them — try again.'); }
-          finally{ busy(false); } }}, 'Add '+missing.length+' common ingredients')) : null,
+            if(await seedItems(missing)){ render(); toast(t('Added {n} ingredients',{n:missing.length}), true); }
+            else toast(t('Couldn’t add them — try again.')); }
+          finally{ busy(false); } }}, t('Add {n} common ingredients',{n:missing.length}))) : null,
       el('div',{}, S.items.map(it=>el('div',{class:'row'},
-        el('div',{class:'nm'}, it.name, (used.get(norm(it.name))||0) ? el('small',{style:'display:block;font-size:12px;color:var(--ink2)'}, 'in '+used.get(norm(it.name))+' recipe'+(used.get(norm(it.name))===1?'':'s')) : null,
+        el('div',{class:'nm'}, it.name, (used.get(norm(it.name))||0) ? el('small',{style:'display:block;font-size:12px;color:var(--ink2)'}, tn(used.get(norm(it.name)),'in {n} recipe','in {n} recipes')) : null,
           el('input',{class:'elname', type:'text', lang:'el', value:it.name_el||'', placeholder:'Ελληνικά',
-            'aria-label':'Greek name for '+it.name, autocapitalize:'sentences',
+            'aria-label':t('Greek name for {x}',{x:it.name}), autocapitalize:'sentences',
             onchange:async e=>{ const v=e.target.value.trim()||null;
               const twin=v && itemByName(v);
-              if(twin && twin!==it){ toast('“'+v+'” is already '+twin.name+'.'); e.target.value=it.name_el||''; return; }
+              if(twin && twin!==it){ toast(t('“{v}” is already {x}.',{v:v, x:dn(twin)})); e.target.value=it.name_el||''; return; }
               try{ busy(true); await api('mp_items?id=eq.'+it.id,{method:'PATCH', body:{name_el:v}}); it.name_el=v; }
               catch(err){ toast(err.message); e.target.value=it.name_el||''; } finally{ busy(false); } }})),
         el('select',{style:'flex:none;width:132px;padding:8px 6px;font-size:13px', value:it.aisle,
-          'aria-label':'Aisle for '+it.name,
+          'aria-label':t('Aisle for {x}',{x:it.name}),
           onchange:async e=>{ const a=e.target.value;
             try{ busy(true); await api('mp_items?id=eq.'+it.id,{method:'PATCH', body:{aisle:a}}); it.aisle=a; }
             catch(err){ toast(err.message); } finally{ busy(false); } }},
-          AISLES.map(([id,label])=>el('option',{value:id, selected:it.aisle===id?'':null}, label)))
+          AISLES.map(([id,label])=>el('option',{value:id, selected:it.aisle===id?'':null}, t(label))))
       )))),
     appSwitcher(),
     el('section',{},
-      el('div',{class:'head'}, el('h2',{},'Account')),
-      el('p',{class:'mut', style:'margin:0 0 14px'},'Same account as Ledger and Overtime.'),
+      el('div',{class:'head'}, el('h2',{}, t('Account'))),
+      el('p',{class:'mut', style:'margin:0 0 14px'}, t('Same account as Ledger and Overtime.')),
       el('div',{class:'btnrow'},
-        el('button',{onclick:()=>{ setSess(null); S.ready=false; boot(); }},'Sign out'))),
+        el('button',{onclick:()=>{ setSess(null); S.ready=false; boot(); }}, t('Sign out')))),
     tabbar());
 }
 
@@ -1150,22 +1222,22 @@ function renderSettings(){
 function appSwitcher(){
   if(!SIBLINGS.length) return null;
   return el('section',{},
-    el('div',{class:'head'}, el('h2',{},'Your other apps')),
+    el('div',{class:'head'}, el('h2',{}, t('Your other apps'))),
     el('p',{class:'mut', style:'margin:0 0 12px'},
-      'Same account, same sign-in — no need to sign in again.'),
+      t('Same account, same sign-in — no need to sign in again.')),
     el('div',{class:'btnrow'}, SIBLINGS.map(([id,label])=>el('a',{href:'../'+id+'/'}, label))));
 }
 
 /* ---------- auth ---------- */
 function authError(e){
-  const m=(e&&e.message)||'Something went wrong.';
-  if(/invalid login/i.test(m)) return 'Wrong email or password.';
+  const m=(e&&e.message)||t('Something went wrong.');
+  if(/invalid login/i.test(m)) return t('Wrong email or password.');
   return m;
 }
 function renderAuth(mode){
   mode=mode||'in';
   const email=el('input',{type:'email', placeholder:'Email', autocomplete:'username', inputmode:'email', autocapitalize:'off', autocorrect:'off', spellcheck:'false'});
-  const pass=el('input',{type:'password', placeholder:'Password', autocomplete:'current-password'});
+  const pass=el('input',{type:'password', placeholder:t('Password'), autocomplete:'current-password'});
   const msg=el('p',{class:'msg'});
   const go=async()=>{
     msg.className='msg'; msg.textContent='';
@@ -1173,7 +1245,7 @@ function renderAuth(mode){
       busy(true);
       if(mode==='forgot'){
         await authReq('recover',{email:email.value.trim(), redirect_to:location.href.split('#')[0]});
-        msg.textContent='Check your email for the reset link.'; return;
+        msg.textContent=t('Check your email for the reset link.'); return;
       }
       const d=await authReq('token?grant_type=password',{email:email.value.trim(), password:pass.value});
       setSess(d); boot();
@@ -1185,28 +1257,28 @@ function renderAuth(mode){
   fill(document.getElementById('app'),el('div',{class:'auth'},
     el('h1',{},'Kitchen'),
     el('p',{class:'mut', style:'margin:0 0 6px'}, mode==='forgot'
-      ? 'We’ll email you a link to set a new password.'
+      ? t('We’ll email you a link to set a new password.')
       : SIBLINGS.length
-      ? 'One account for Ledger, Overtime and Kitchen — sign in once and all three open.'
-      : 'Sign in with your Ledger / Overtime account.'),
+      ? t('One account for Ledger, Overtime and Kitchen — sign in once and all three open.')
+      : t('Sign in with your Ledger / Overtime account.')),
     email,
     mode==='forgot'?null:pass,
     msg,
-    el('div',{class:'btnrow'}, el('button',{class:'pri', onclick:go}, mode==='forgot'?'Send link':'Sign in')),
+    el('div',{class:'btnrow'}, el('button',{class:'pri', onclick:go}, t(mode==='forgot'?'Send link':'Sign in'))),
     el('button',{class:'authlink', onclick:()=>renderAuth(mode==='forgot'?'in':'forgot')},
-      mode==='forgot'?'Back to sign in':'Forgot password?')));
+      t(mode==='forgot'?'Back to sign in':'Forgot password?'))));
 }
 function renderReset(tok){
-  const pass=el('input',{type:'password', placeholder:'New password', autocomplete:'new-password'});
+  const pass=el('input',{type:'password', placeholder:t('New password'), autocomplete:'new-password'});
   const msg=el('p',{class:'msg'});
   fill(document.getElementById('app'),el('div',{class:'auth'},
-    el('h1',{},'New password'), pass, msg,
+    el('h1',{}, t('New password')), pass, msg,
     el('div',{class:'btnrow'}, el('button',{class:'pri', onclick:async()=>{
       try{ busy(true); await authReq('user',{password:pass.value},'PUT',tok.access_token);
         setSess(tok); history.replaceState(null,'',location.pathname+location.search); boot(); }
       catch(e){ msg.className='msg err'; msg.textContent=authError(e); }
       finally{ busy(false); }
-    }},'Save'))));
+    }}, t('Save')))));
 }
 
 /* ---------- shell ---------- */
@@ -1216,8 +1288,8 @@ function tabbar(){
     onclick:()=>{ S.view=id; S.recipe=null; S.draft=null; render(); }},
     label, badge?el('span',{class:'dot'}, badge):null);
   return el('div',{class:'tabbar'},
-    tab('recipes','Recipes'), tab('plan','Plan', S.basket.length||null),
-    tab('shop','Shop', n||null), tab('settings','Settings'));
+    tab('recipes',t('Recipes')), tab('plan',t('Plan'), S.basket.length||null),
+    tab('shop',t('Shop'), n||null), tab('settings',t('Settings')));
 }
 function render(){
   if(S.cook) return renderCook();
@@ -1239,7 +1311,7 @@ async function boot(){
     fill(document.getElementById('app'),el('div',{class:'auth'},
       el('h1',{},'Kitchen'),
       el('p',{class:'msg err'}, e.message),
-      el('div',{class:'btnrow'}, el('button',{class:'pri', onclick:boot},'Try again'))));
+      el('div',{class:'btnrow'}, el('button',{class:'pri', onclick:boot}, t('Try again')))));
   }
   finally{ busy(false); }
 }
@@ -1268,5 +1340,6 @@ window.addEventListener('storage', e=>{
   if(!now){ resetData(); boot(); return; }
   if(!was || uid(was)!==uid(now)){ resetData(); boot(); }
 });
+document.documentElement.lang=LANG;
 boot();
 </script>
