@@ -9,6 +9,7 @@ create table mp_items (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
   name       text not null check (length(btrim(name)) > 0),
+  name_el    text check (name_el is null or length(btrim(name_el)) > 0),   -- Greek name; name stays canonical
   aisle      text not null default 'other',
   unit       text,
   created_at timestamptz not null default now()
@@ -16,6 +17,8 @@ create table mp_items (
 -- The catalogue is a set, case-insensitively: typing "Olive Oil" must find the
 -- existing "olive oil" rather than creating a twin that splits the shopping list.
 create unique index mp_items_name on mp_items (user_id, lower(btrim(name)));
+-- Same for the Greek name (migration kitchen_greek_names).
+create unique index mp_items_name_el on mp_items (user_id, lower(btrim(name_el))) where name_el is not null;
 
 create table mp_recipes (
   id         uuid primary key default gen_random_uuid(),
@@ -38,6 +41,7 @@ create table mp_recipe_items (
   recipe_id uuid not null references mp_recipes(id) on delete cascade,
   item_id   uuid references mp_items(id) on delete set null,
   name      text not null,
+  name_el   text,                                   -- denormalised, like name
   qty       numeric check (qty is null or qty >= 0),
   unit      text,
   pos       int not null default 0

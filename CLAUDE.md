@@ -51,14 +51,16 @@ Schema lives in `supabase/schema.sql` (reference copy; it was applied as the
 migration `kitchen_app_schema`). Schema changes: apply via the Supabase MCP
 (`apply_migration`) and update `supabase/schema.sql` in the same commit.
 
-- `mp_items` — the ingredient catalogue. `name`, `aisle`, `unit` (a default,
-  offered when you pick the item). Unique on `lower(btrim(name))` per user, so
-  "Olive Oil" can never become a second row alongside "olive oil" and split a
-  shopping line in two.
+- `mp_items` — the ingredient catalogue. `name`, `name_el` (Greek, optional),
+  `aisle`, `unit` (a default, offered when you pick the item). Unique on
+  `lower(btrim(name))` per user, so "Olive Oil" can never become a second row
+  alongside "olive oil" and split a shopping line in two; `name_el` has the same
+  index. `name` is canonical — lines merge on it; `name_el` is for display and
+  search only.
 - `mp_recipes` — `title`, `servings` (the base the ingredients are written for),
   `minutes`, `video` (a **YouTube id**, never a URL), `steps text[]`, `note`.
 - `mp_recipe_items` — one ingredient line: `recipe_id`, `item_id`, `name`,
-  `qty`, `unit`, `pos`. `name` is denormalised next to `item_id` on purpose —
+  `name_el`, `qty`, `unit`, `pos`. `name` (and `name_el`) is denormalised next to `item_id` on purpose —
   deleting a catalogue entry must never blank an ingredient in a saved recipe.
 - `mp_basket` — what you've decided to cook. Primary key `(user_id, recipe_id)`,
   so adding the same recipe twice is idempotent. `servings` is what you want
@@ -144,12 +146,22 @@ This repo is **public** (required for free GitHub Pages). So:
 Ticked-off state lives in `localStorage` (`kitchen_checked`), not the database —
 it's per-shop and disposable, and a table would cost a round trip per tap.
 
+How mass and volume *read* is a per-device preference (`kitchen_units`: Auto,
+g/kg, ml/l), applied only in `fmtAmount`. Storage and summing stay in g / ml.
+There is deliberately no preference for spoons, cloves or tins.
+
 ## Architecture (index.html)
 
 Mirrors Ledger's and Overtime's conventions:
 
 - `el(tag, props, ...kids)` is the only DOM helper; views are built with it
   directly.
+- **Every user-facing string goes through `t()`** (plurals: `tn()`). The key is
+  the English text; `EL` holds the Greek. A missing key falls back to English,
+  never blank. Language is per device (`kitchen_lang`), switched in Settings.
+  `ul()` gives Greek unit labels at render time only — stored units stay
+  `g`/`ml`/`tbsp` so `FAM` never sees them. Aisle *order* is not translated,
+  only the labels.
 - Global state `S`. All data loads once at boot (`loadAll`) — it's small
   forever — and every calculation runs in memory. Mutate `S`, call `render()`.
 - `api()` wraps `/rest/v1`, retries once on 401 after refreshing the token.
@@ -166,9 +178,19 @@ Mirrors Ledger's and Overtime's conventions:
   promise: type, see ranked suggestions, tap, repeat. It updates its suggestion
   list with surgical DOM writes rather than `render()`, because a re-render
   closes the keyboard mid-word. Ranking is prefix-match first, then how many of
-  your recipes already use the item, then alphabetical. Anything you type that
+  your recipes already use the item, then alphabetical. Matching runs on both
+  names, accent-blind (`bare`) and through a Greeklish sound-key (`fold`), so
+  `κρεμμυδι`, `kremmidi` and `onion` all land on Onion. `itemByName` checks both
+  names too — that's what keeps a Greek spelling from becoming a second row. Anything you type that
   isn't in the catalogue is offered as "Add …" and becomes a permanent
   `mp_items` row — that's how the list learns.
+- `voiceButton` adds a mic to every `itemPicker` where the browser has the
+  Web Speech API (no key, no server of ours). An exact catalogue match goes
+  straight in; anything else fills the box so the suggestions do the rest.
+  Siri can't reach a web app — see issue #12 for the native half.
+- `SEED` stocks a new account. Older accounts get the additions from a
+  Settings button (`missingSeed`) rather than silently on boot, so an item
+  someone deleted doesn't creep back.
 - Item usage counts are **derived** from `S.ings` (`useCounts`), not stored. The
   recipes are already in memory; a counter column would be a second source of
   truth for no gain.
