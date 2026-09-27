@@ -53,6 +53,9 @@ create table mp_basket (
   user_id   uuid not null default auth.uid() references auth.users(id) on delete cascade,
   recipe_id uuid not null references mp_recipes(id) on delete cascade,
   servings  int  not null default 2 check (servings between 1 and 99),
+  -- lower(name)s of this recipe's ingredients you already have at home; they
+  -- stay off this week's shopping list (migration kitchen_basket_have).
+  have      text[] not null default '{}',
   added_at  timestamptz not null default now(),
   primary key (user_id, recipe_id)
 );
@@ -69,6 +72,63 @@ create table mp_extras (
 );
 create index mp_extras_user on mp_extras (user_id, created_at);
 
+-- Your own shop categories (migration kitchen_aisles). No rows = the built-in
+-- walk in index.html's AISLES. The first edit writes the whole list, so from
+-- then on this table is the order. key is what mp_items.aisle / mp_extras.aisle
+-- hold; name null means "the built-in label, translated".
+create table mp_aisles (
+  user_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  key        text not null check (length(btrim(key)) > 0),
+  name       text check (name is null or length(btrim(name)) > 0),
+  pos        int  not null default 0,
+  created_at timestamptz not null default now(),
+  primary key (user_id, key)
+);
+
+-- Where you get things (migration kitchen_sources). Per user, edited in
+-- Settings; no names are seeded by the app (they're personal, repo is public).
+create table mp_sources (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  name       text not null check (length(btrim(name)) > 0),
+  pos        int  not null default 0,
+  created_at timestamptz not null default now()
+);
+create unique index mp_sources_name on mp_sources (user_id, lower(btrim(name)));
+alter table mp_items add column source_id uuid references mp_sources(id) on delete set null;
+
+-- Baskets: named sets of groceries, independent of recipes — "Weekly
+-- staples", "BBQ Saturday" (migration kitchen_lists). Called lists here
+-- because mp_basket is already taken by the meal plan. active = on this
+-- week's shopping list.
+create table mp_lists (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  name       text not null check (length(btrim(name)) > 0),
+  active     boolean not null default false,
+  source_id  uuid references mp_sources(id) on delete set null,   -- kitchen_sources
+  created_at timestamptz not null default now()
+);
+create index mp_lists_user on mp_lists (user_id, created_at);
+
+-- Same shape as mp_recipe_items, name denormalised for the same reason.
+create table mp_list_items (
+  id       uuid primary key default gen_random_uuid(),
+  user_id  uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  list_id  uuid not null references mp_lists(id) on delete cascade,
+  item_id  uuid references mp_items(id) on delete set null,
+  name     text not null check (length(btrim(name)) > 0),
+  name_el  text,
+  qty      numeric check (qty is null or qty >= 0),
+  unit     text,
+  pos      int not null default 0
+);
+create index mp_list_items_list on mp_list_items (list_id, pos);
+
+alter table mp_sources      enable row level security;
+alter table mp_lists        enable row level security;
+alter table mp_list_items   enable row level security;
+alter table mp_aisles       enable row level security;
 alter table mp_items        enable row level security;
 alter table mp_recipes      enable row level security;
 alter table mp_recipe_items enable row level security;
@@ -80,3 +140,7 @@ create policy mp_recipes_own      on mp_recipes      for all using (user_id = au
 create policy mp_recipe_items_own on mp_recipe_items for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy mp_basket_own       on mp_basket       for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy mp_extras_own       on mp_extras       for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy mp_aisles_own       on mp_aisles       for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy mp_sources_own      on mp_sources      for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy mp_lists_own        on mp_lists        for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy mp_list_items_own   on mp_list_items   for all using (user_id = auth.uid()) with check (user_id = auth.uid());
