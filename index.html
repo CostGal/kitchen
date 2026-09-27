@@ -399,6 +399,12 @@ const EL={
   'Send link':'Αποστολή link','Sign in':'Σύνδεση','Back to sign in':'Πίσω στη σύνδεση','Forgot password?':'Ξέχασες τον κωδικό;',
   'New password':'Νέος κωδικός','Try again':'Δοκίμασε ξανά',
   'Say an ingredient':'Πες ένα υλικό','Microphone access is off for this site.':'Το μικρόφωνο είναι κλειστό για αυτή τη σελίδα.','Didn’t catch that.':'Δεν το έπιασα.',
+  'Baskets':'Καλάθια','+ New basket':'+ Νέο καλάθι','New basket':'Νέο καλάθι','Edit basket':'Αλλαγή καλαθιού',
+  'Put on this week’s list':'Στη λίστα της εβδομάδας','Take off this week’s list':'Βγάλ’ το από τη λίστα της εβδομάδας',
+  'Things you buy together that aren’t a recipe — weekly staples, a BBQ, someone else’s list. Put one on this week’s list with +.':'Πράγματα που αγοράζεις μαζί και δεν είναι συνταγή — τα βασικά της εβδομάδας, ένα μπάρμπεκιου, τη λίστα κάποιου άλλου. Βάλε ένα στη λίστα της εβδομάδας με το +.',
+  '{n} item':'{n} πράγμα','Name':'Όνομα','Weekly staples':'Τα βασικά της εβδομάδας','In this basket':'Σε αυτό το καλάθι',
+  'Give it a name.':'Δώσ’ του ένα όνομα.','Add basket':'Προσθήκη καλαθιού',
+  'That basket no longer exists — it may have been deleted on another device.':'Το καλάθι δεν υπάρχει πια — ίσως διαγράφηκε από άλλη συσκευή.',
   'Already have any of these?':'Έχεις ήδη κάποια από αυτά;','{n} ticked':'{n} επιλεγμένα',
   'Tick what’s already at home and it stays off this week’s shopping list for {x}.':'Σημείωσε ό,τι έχεις ήδη στο σπίτι και δε θα μπει στη λίστα για ψώνια της εβδομάδας για: {x}.',
   '{n} thing left off the list':'{n} πράγμα έμεινε εκτός λίστας','{n} things left off the list':'{n} πράγματα έμειναν εκτός λίστας',
@@ -464,6 +470,7 @@ const ICONS={
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg>',
   mic  :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',
   sort :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M4 12h7M4 18h4M17 4v16M14 17l3 3 3-3"/></svg>',
+  basket:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h18l-2 10H5z"/><path d="M8 10l4-6 4 6M9 14v3M15 14v3"/></svg>',
   pot  :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18M4.5 9v8a3 3 0 003 3h9a3 3 0 003-3V9"/><path d="M8 6V3M16 6V3M12 6V4"/></svg>'
 };
 function icon(n){ const s=el('span',{class:'ico'}); s.innerHTML=ICONS[n]||''; return s; }
@@ -695,19 +702,21 @@ function fmtAmount(qty, unit){
    every calculation runs in memory. Mutate S, then render().
    S.draft holds the half-finished recipe form for the same reason Overtime's
    does: a background refetch must not throw away what you were typing. */
-const S={view:'recipes', recipes:[], ings:[], items:[], basket:[], extras:[], aisles:[],
+const S={view:'recipes', recipes:[], ings:[], items:[], basket:[], extras:[], aisles:[], lists:[], listItems:[], listDraft:null,
          recipe:null, servings:null, draft:null, cook:null, tour:null, wake:null, organise:false, importer:null, ready:false};
 
 async function loadAll(){
-  const [items, recipes, ings, basket, extras, aisleRows]=await Promise.all([
+  const [items, recipes, ings, basket, extras, aisleRows, lists, listItems]=await Promise.all([
     api('mp_items?select=*&order=name.asc'),
     api('mp_recipes?select=*&order=created_at.desc'),
     api('mp_recipe_items?select=*&order=pos.asc'),
     api('mp_basket?select=*'),
     api('mp_extras?select=*&order=created_at.asc'),
-    api('mp_aisles?select=*&order=pos.asc')
+    api('mp_aisles?select=*&order=pos.asc'),
+    api('mp_lists?select=*&order=created_at.asc'),
+    api('mp_list_items?select=*&order=pos.asc')
   ]);
-  S.items=items; S.recipes=recipes; S.ings=ings; S.basket=basket; S.extras=extras; S.aisles=aisleRows;
+  S.items=items; S.recipes=recipes; S.ings=ings; S.basket=basket; S.extras=extras; S.aisles=aisleRows; S.lists=lists; S.listItems=listItems;
   if(!S.items.length) await seedItems();
 }
 
@@ -833,6 +842,15 @@ function shopList(withEmpty){
       if(L.from.indexOf(r.title)<0) L.from.push(r.title);
     }
   }
+  /* Baskets switched on for this week: the same lines as a recipe's, without
+     the scaling. */
+  for(const l of S.lists.filter(l=>l.active)){
+    for(const x of S.listItems.filter(i=>i.list_id===l.id)){
+      const L=line(x.name, null, x.name_el);
+      addQty(L, x.qty, x.unit);
+      if(L.from.indexOf(l.name)<0) L.from.push(l.name);
+    }
+  }
   for(const x of S.extras){
     const L=line(x.name, x.aisle);
     addQty(L, x.qty, x.unit);
@@ -943,6 +961,43 @@ async function setBasket(recipeId, servings){
     else{ const r=await api('mp_basket',{method:'POST', body:{recipe_id:recipeId, servings:servings}, headers:REP.headers});
       if(r[0]) S.basket.push(r[0]); }
   } finally{ busy(false); }
+}
+async function saveList(d){
+  busy(true);
+  try{
+    const rows=d.rows.filter(r=>norm(r.name));
+    await ensureItems(rows.map(r=>r.name));
+    let l;
+    if(d.id){
+      const r=await api('mp_lists?id=eq.'+d.id,{method:'PATCH', body:{name:d.name.trim()}, headers:REP.headers});
+      if(!r[0]) throw new Error(t('That basket no longer exists — it may have been deleted on another device.'));
+      l=r[0]; S.lists=S.lists.map(x=>x.id===l.id?l:x);
+      await api('mp_list_items?list_id=eq.'+d.id,{method:'DELETE'});
+      S.listItems=S.listItems.filter(i=>i.list_id!==d.id);
+    }else{
+      const r=await api('mp_lists',{method:'POST', body:{name:d.name.trim()}, headers:REP.headers});
+      l=r[0]; S.lists.push(l);
+    }
+    if(rows.length){
+      const made=await api('mp_list_items',{method:'POST', headers:REP.headers, body:rows.map((r,i)=>{ const it=itemByName(r.name)||{};
+        return {list_id:l.id, item_id:it.id||null, name:r.name.trim(), name_el:it.name_el||null,
+          qty:(r.qty===''||r.qty==null)?null:+r.qty, unit:norm(r.unit)||null, pos:i}; })});
+      S.listItems=S.listItems.concat(made);
+    }
+    return l;
+  } finally{ busy(false); }
+}
+async function setListActive(id, on){
+  busy(true);
+  try{ const r=await api('mp_lists?id=eq.'+id,{method:'PATCH', body:{active:on}, headers:REP.headers});
+    if(r[0]) S.lists=S.lists.map(x=>x.id===id?r[0]:x); }
+  finally{ busy(false); }
+}
+async function deleteList(id){
+  busy(true);
+  try{ await api('mp_lists?id=eq.'+id,{method:'DELETE'});
+    S.lists=S.lists.filter(l=>l.id!==id); S.listItems=S.listItems.filter(i=>i.list_id!==id); }
+  finally{ busy(false); }
 }
 async function setHave(recipeId, list){
   busy(true);
@@ -1644,10 +1699,15 @@ function renderForm(){
 function renderPlan(){
   const rows=S.basket.map(b=>({b:b, r:recipeById(b.recipe_id)})).filter(x=>x.r);
   const app=document.getElementById('app');
+  const onLists=S.lists.filter(l=>l.active);
   fill(app,
-    topbar(t('Plan'), rows.length ? el('button',{onclick:async()=>{
+    topbar(t('Plan'), rows.length||onLists.length ? el('button',{onclick:async()=>{
       if(!confirm(t('Clear the whole plan?'))) return;
-      try{ busy(true); await api('mp_basket?recipe_id=not.is.null',{method:'DELETE'}); S.basket=[]; render(); }
+      try{ busy(true);
+        await api('mp_basket?recipe_id=not.is.null',{method:'DELETE'}); S.basket=[];
+        /* Baskets are kept — only switched off for next week. */
+        if(onLists.length){ await api('mp_lists?active=is.true',{method:'PATCH', body:{active:false}}); S.lists.forEach(l=>{ l.active=false; }); }
+        render(); }
       catch(e){ toast(e.message); } finally{ busy(false); }
     }}, t('Clear')) : null),
     rows.length ? el('div',{},
@@ -1668,6 +1728,77 @@ function renderPlan(){
       )))
     ) : el('div',{class:'empty'}, t('Nothing planned. Go to '), el('b',{style:'color:var(--acc)'}, t('Recipes')),
         t(' and tap + on whatever you fancy this week — the shopping list builds itself.')),
+    basketSection(),
+    tabbar());
+}
+/* Baskets: named sets of groceries that aren't a recipe — "Weekly staples",
+   "BBQ Saturday". The + / ✓ puts one on this week's list the same way a
+   recipe card does; tapping the card edits it. */
+function basketSection(){
+  return el('section',{style:'margin-top:28px'},
+    el('div',{class:'head'}, el('h2',{}, t('Baskets')),
+      el('button',{class:'link', onclick:()=>{ S.listDraft={id:null, name:'', rows:[]}; render(); }}, t('+ New basket'))),
+    S.lists.length ? el('div',{class:'cards'}, S.lists.map(l=>{
+      const n=S.listItems.filter(i=>i.list_id===l.id).length;
+      const card=el('button',{class:'card'+(l.active?' on':''), onclick:()=>{ S.listDraft=listDraftFrom(l); render(); }},
+        el('span',{class:'thumb none'}, icon('basket')),
+        el('span',{class:'txt'}, el('b',{}, l.name), el('small',{}, tn(n,'{n} item','{n} items'))));
+      const add=el('button',{class:'add'+(l.active?' on':''), 'aria-label':t(l.active?'Take off this week’s list':'Put on this week’s list'),
+        onclick:async e=>{ e.stopPropagation();
+          try{ await setListActive(l.id, !l.active); render(); }catch(err){ toast(err.message); } }});
+      add.append(l.active?icon('check'):document.createTextNode('+'));
+      card.append(add);
+      return card;
+    })) : el('p',{class:'mut', style:'margin:0'},
+      t('Things you buy together that aren’t a recipe — weekly staples, a BBQ, someone else’s list. Put one on this week’s list with +.')));
+}
+function listDraftFrom(l){
+  return {id:l.id, name:l.name, rows:S.listItems.filter(i=>i.list_id===l.id).sort((a,b)=>a.pos-b.pos)
+    .map(i=>({name:i.name, qty:i.qty==null?'':String(i.qty), unit:i.unit||''}))};
+}
+function renderListForm(){
+  const d=S.listDraft, editing=!!d.id, app=document.getElementById('app');
+  const msg=el('p',{class:'msg'});
+  const ings=el('div',{class:'ings'});
+  const paint=()=>fill(ings, d.rows.map((row,idx)=>el('div',{class:'ing'},
+    el('input',{class:'q', type:'text', inputmode:'decimal', placeholder:'–', value:row.qty,
+      'aria-label':t('Quantity for {x}',{x:row.name}), oninput:e=>{ row.qty=e.target.value; }}),
+    el('input',{class:'u', type:'text', placeholder:t('unit'), value:row.unit, list:'units',
+      'aria-label':t('Unit for {x}',{x:row.name}), oninput:e=>{ row.unit=e.target.value; }}),
+    el('span',{class:'nm'}, dn(itemByName(row.name)||row)),
+    el('button',{class:'x', type:'button','aria-label':t('Remove {x}',{x:row.name}),
+      onclick:()=>{ d.rows.splice(idx,1); paint(); }},'×'))));
+  paint();
+  const picker=itemPicker(t('Add ingredient…'), name=>{
+    const it=itemByName(name);
+    if(d.rows.some(r=>norm(r.name)===norm(it?it.name:name))) return;     /* once is enough */
+    d.rows.push({name:it?it.name:name, qty:'', unit:(it&&it.unit)||''}); paint();
+  });
+  const close=()=>{ S.listDraft=null; render(); };
+  fill(app,
+    el('div',{class:'topbar'},
+      el('div',{class:'nav'}, el('button',{class:'ico-only','aria-label':t('Back'), onclick:close},'←')),
+      el('h1',{style:'flex:1;min-width:0;font-size:18px;letter-spacing:.04em'}, t(editing?'Edit basket':'New basket')),
+      el('div',{class:'nav'})),
+    el('div',{class:'form'+(editing?' editing':'')},
+      el('label',{}, t('Name'), el('input',{type:'text', value:d.name, placeholder:t('Weekly staples'),
+        autocapitalize:'sentences', oninput:e=>{ d.name=e.target.value; }}))),
+    el('section',{},
+      el('div',{class:'head'}, el('h2',{}, t('In this basket')), el('span',{class:'sub'}, d.rows.length||'')),
+      picker, ings),
+    msg,
+    el('div',{class:'btnrow'},
+      el('button',{class:'pri', onclick:async()=>{
+        if(!d.name.trim()){ msg.textContent=t('Give it a name.'); msg.className='msg err'; return; }
+        try{ await saveList(d); close(); toast(t('Saved'), true); }
+        catch(e){ msg.textContent=e.message; msg.className='msg err'; }
+      }}, t(editing?'Save':'Add basket')),
+      el('button',{onclick:close}, t('Cancel')),
+      editing ? el('button',{class:'danger', onclick:async()=>{
+        if(!confirm(t('Delete “{x}”?',{x:d.name}))) return;
+        try{ await deleteList(d.id); close(); toast(t('Deleted'), true); }catch(e){ toast(e.message); }
+      }}, t('Delete')) : null),
+    el('datalist',{id:'units'}, UNITS.map(u=>el('option',{value:u}))),
     tabbar());
 }
 /* The Plan servings stepper changes the Shop badge but nothing else on screen,
@@ -1914,16 +2045,17 @@ function renderReset(tok){
 function tabbar(){
   const n=S.ready ? shopList().reduce((t,g)=>t+g.rows.length,0) : 0;
   const tab=(id,label,badge)=>el('button',{class:S.view===id&&!S.recipe?'on':'',
-    onclick:()=>{ S.view=id; S.recipe=null; S.draft=null; S.organise=false; S.importer=null; render(); }},
+    onclick:()=>{ S.view=id; S.recipe=null; S.draft=null; S.organise=false; S.importer=null; S.listDraft=null; render(); }},
     label, badge?el('span',{class:'dot'}, badge):null);
   return el('div',{class:'tabbar'},
-    tab('recipes',t('Recipes')), tab('plan',t('Plan'), S.basket.length||null),
+    tab('recipes',t('Recipes')), tab('plan',t('Plan'), (S.basket.length+S.lists.filter(l=>l.active).length)||null),
     tab('shop',t('Shop'), n||null), tab('settings',t('Settings')));
 }
 function render(){
   if(S.tour!=null) return renderTour();
   if(S.cook) return renderCook();
   if(S.importer) return renderImport();
+  if(S.listDraft) return renderListForm();
   if(S.draft) return renderForm();
   if(S.recipe && S.recipe!=='new') return renderRecipe();
   if(S.view==='plan') return renderPlan();
@@ -1951,7 +2083,7 @@ async function boot(){
 document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState!=='visible' || !S.ready) return;
   if(S.cook){ holdScreen(); return; }              /* wake locks die on hide */
-  if(S.draft || S.importer) return;
+  if(S.draft || S.importer || S.listDraft) return;
   loadAll().then(render).catch(()=>{});
 });
 /* Everything cached for the account that just went away. Signing in as someone
@@ -1959,6 +2091,7 @@ document.addEventListener('visibilitychange', ()=>{
 function resetData(){
   S.ready=false; S.recipes=[]; S.ings=[]; S.items=[]; S.basket=[]; S.extras=[];
   S.recipe=null; S.servings=null; S.draft=null; S.cook=null; S.tour=null; S.organise=false; S.importer=null; S.view='recipes'; S.aisles=[];
+  S.lists=[]; S.listItems=[]; S.listDraft=null;
 }
 /* Signing in or out in one app lands in the other two straight away, instead of
    surfacing later as a confusing 401. Token rotation writes this key too, so

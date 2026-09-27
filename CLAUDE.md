@@ -67,6 +67,12 @@ migration `kitchen_app_schema`). Schema changes: apply via the Supabase MCP
   this week, which may differ from the recipe's base. `have text[]` holds the
   `lower(name)`s of that recipe's ingredients you already have at home
   (`haveSheet`); they stay off the list, and go when the entry does.
+- `mp_lists` + `mp_list_items` — **baskets** in the UI: named sets of
+  groceries that aren't a recipe ("Weekly staples", "BBQ Saturday"). Called
+  *lists* in code because `mp_basket` already means the meal plan — keep the
+  two words apart. `active` = on this week's shopping list; items are shaped
+  like `mp_recipe_items` (name denormalised) and are never scaled. The Plan
+  tab's Clear switches baskets off rather than deleting them.
 - `mp_extras` — things no recipe asked for (bin bags, coffee). This *is* the
   "manually added line" on the Shop tab — there is no second kind.
 - `mp_aisles` — your shop categories: `key`, `name` (null = the built-in label,
@@ -149,6 +155,8 @@ This repo is **public** (required for free GitHub Pages). So:
    bunches) is summed per exact unit and rendered side by side: "Garlic —
    2 cloves + 1 tbsp". **Do not invent conversions between those.** There isn't
    one, and a wrong number on a shopping list is worse than two right ones.
+3½. Items of every active basket (`mp_lists.active`) join the same merge,
+   unscaled, credited to the basket's name.
 4. Ingredients with no quantity ("salt", "olive oil") still appear, without a
    number.
 5. Lines are grouped by `aisles()` — your `mp_aisles` order, or `AISLES` if
@@ -186,6 +194,7 @@ Mirrors Ledger's and Overtime's conventions:
   stray tap mid-shop never moves the milk; a move patches the `mp_items` row so
   it sticks),
   `renderSettings` (ingredient catalogue + aisles, `appSwitcher()`, sign out),
+  `renderListForm` (a basket; opened from `basketSection` on the Plan tab),
   `renderCook`.
 - `appSwitcher()` is the door to the sibling apps — plain `<a href="../ledger/">`
   links styled as secondary buttons by the one `.btnrow a` rule. A shared door,
