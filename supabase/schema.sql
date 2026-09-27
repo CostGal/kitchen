@@ -85,6 +85,18 @@ create table mp_aisles (
   primary key (user_id, key)
 );
 
+-- Where you get things (migration kitchen_sources). Per user, edited in
+-- Settings; no names are seeded by the app (they're personal, repo is public).
+create table mp_sources (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  name       text not null check (length(btrim(name)) > 0),
+  pos        int  not null default 0,
+  created_at timestamptz not null default now()
+);
+create unique index mp_sources_name on mp_sources (user_id, lower(btrim(name)));
+alter table mp_items add column source_id uuid references mp_sources(id) on delete set null;
+
 -- Baskets: named sets of groceries, independent of recipes — "Weekly
 -- staples", "BBQ Saturday" (migration kitchen_lists). Called lists here
 -- because mp_basket is already taken by the meal plan. active = on this
@@ -94,6 +106,7 @@ create table mp_lists (
   user_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
   name       text not null check (length(btrim(name)) > 0),
   active     boolean not null default false,
+  source_id  uuid references mp_sources(id) on delete set null,   -- kitchen_sources
   created_at timestamptz not null default now()
 );
 create index mp_lists_user on mp_lists (user_id, created_at);
@@ -112,6 +125,7 @@ create table mp_list_items (
 );
 create index mp_list_items_list on mp_list_items (list_id, pos);
 
+alter table mp_sources      enable row level security;
 alter table mp_lists        enable row level security;
 alter table mp_list_items   enable row level security;
 alter table mp_aisles       enable row level security;
@@ -127,5 +141,6 @@ create policy mp_recipe_items_own on mp_recipe_items for all using (user_id = au
 create policy mp_basket_own       on mp_basket       for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy mp_extras_own       on mp_extras       for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy mp_aisles_own       on mp_aisles       for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy mp_sources_own      on mp_sources      for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy mp_lists_own        on mp_lists        for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy mp_list_items_own   on mp_list_items   for all using (user_id = auth.uid()) with check (user_id = auth.uid());

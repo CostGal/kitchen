@@ -73,6 +73,14 @@ migration `kitchen_app_schema`). Schema changes: apply via the Supabase MCP
   two words apart. `active` = on this week's shopping list; items are shaped
   like `mp_recipe_items` (name denormalised) and are never scaled. The Plan
   tab's Clear switches baskets off rather than deleting them.
+- `mp_sources` — the places you get things (a supermarket, the laiki, a
+  relative's house), edited in Settings. `mp_items.source_id` and
+  `mp_lists.source_id` point at one (nullable, `on delete set null`). A line's
+  place is its item's; failing that, the active basket's it came from. The
+  Shop tab's chips filter by place (per device, `kitchen_source`), and a
+  filtered list **keeps lines with no place** — they can be bought anywhere.
+  **No place names ship in the code**: they're personal and this repo is
+  public. A new account starts with none.
 - `mp_extras` — things no recipe asked for (bin bags, coffee). This *is* the
   "manually added line" on the Shop tab — there is no second kind.
 - `mp_aisles` — your shop categories: `key`, `name` (null = the built-in label,

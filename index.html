@@ -267,7 +267,13 @@
   .orghead .mv{flex:none; width:44px; height:44px; font-size:17px; color:var(--ink2); background:var(--card2); border:1px solid var(--rule); border-radius:10px}
   .orghead .mv:disabled{opacity:.3}
   .orghead .mv.del{color:var(--bad); border-color:#4A2325}
-  .org .row .asel{flex:none; width:140px; padding:8px 6px; font-size:13px}
+  .asel,.ssel{flex:none; width:132px; min-width:0; padding:8px 6px; font-size:13px}
+  .sels{flex:none; display:flex; gap:6px}
+  .sels.col{flex-direction:column}
+  .orgrow{flex-wrap:wrap}
+  .orgrow .sels{flex-basis:100%; justify-content:flex-end}
+  .orgrow .sels select{flex:1; width:auto}
+  .srcchips{margin-top:14px}
 
   /* --- cook mode: one step, big, screen held awake --- */
   .cook{position:fixed; inset:0; z-index:50; background:var(--bg); display:flex; flex-direction:column;
@@ -399,6 +405,10 @@ const EL={
   'Send link':'Αποστολή link','Sign in':'Σύνδεση','Back to sign in':'Πίσω στη σύνδεση','Forgot password?':'Ξέχασες τον κωδικό;',
   'New password':'Νέος κωδικός','Try again':'Δοκίμασε ξανά',
   'Say an ingredient':'Πες ένα υλικό','Microphone access is off for this site.':'Το μικρόφωνο είναι κλειστό για αυτή τη σελίδα.','Didn’t catch that.':'Δεν το έπιασα.',
+  'Where from':'Από πού','Anywhere':'Οπουδήποτε','All':'Όλα','Where to get {x}':'Από πού: {x}',
+  'A shop, a market, someone’s house…':'Ένα μαγαζί, μια λαϊκή, ένα σπίτι…','“{v}” is already on the list.':'Το «{v}» υπάρχει ήδη.',
+  'The places you get things. Give an item or a basket a place, then filter the shopping list by where you’re going.':'Τα μέρη απ’ όπου παίρνεις πράγματα. Δώσε σε ένα υλικό ή ένα καλάθι ένα μέρος και φίλτραρε τη λίστα για ψώνια ανάλογα με το πού πας.',
+  'Delete “{x}”? Items and baskets that use it go back to “anywhere”.':'Διαγραφή «{x}»; Τα υλικά και τα καλάθια που το χρησιμοποιούν γίνονται «οπουδήποτε».',
   'Baskets':'Καλάθια','+ New basket':'+ Νέο καλάθι','New basket':'Νέο καλάθι','Edit basket':'Αλλαγή καλαθιού',
   'Put on this week’s list':'Στη λίστα της εβδομάδας','Take off this week’s list':'Βγάλ’ το από τη λίστα της εβδομάδας',
   'Things you buy together that aren’t a recipe — weekly staples, a BBQ, someone else’s list. Put one on this week’s list with +.':'Πράγματα που αγοράζεις μαζί και δεν είναι συνταγή — τα βασικά της εβδομάδας, ένα μπάρμπεκιου, τη λίστα κάποιου άλλου. Βάλε ένα στη λίστα της εβδομάδας με το +.',
@@ -655,6 +665,47 @@ async function deleteAisle(key){
     S.aisles=S.aisles.filter(a=>a.key!==key);
   } finally{ busy(false); }
 }
+/* ---------- where you get things (sources) ----------
+   Your own list of places — shops, a market, a relative's house — edited in
+   Settings. An item can name one; a basket can name one for everything in it
+   that doesn't have its own. The Shop tab filters by it. No names ship in the
+   code: this repo is public, and the places are yours. */
+const SRC_KEY='kitchen_source';
+function sourceName(id){ const x=S.sources.find(s=>s.id===id); return x?x.name:''; }
+function shopSource(){ try{ const v=localStorage.getItem(SRC_KEY)||''; return S.sources.some(s=>s.id===v)?v:''; }catch(e){ return ''; } }
+function setShopSource(v){ try{ if(v) localStorage.setItem(SRC_KEY, v); else localStorage.removeItem(SRC_KEY); }catch(e){} }
+async function addSource(name){
+  busy(true);
+  try{ const r=await api('mp_sources',{method:'POST', headers:REP.headers, body:{name:name.trim(), pos:S.sources.length}});
+    if(r[0]) S.sources.push(r[0]); }
+  finally{ busy(false); }
+}
+async function renameSource(id, name){
+  busy(true);
+  try{ const r=await api('mp_sources?id=eq.'+id,{method:'PATCH', headers:REP.headers, body:{name:name.trim()}});
+    if(r[0]) S.sources=S.sources.map(x=>x.id===id?r[0]:x); }
+  finally{ busy(false); }
+}
+async function deleteSource(id){
+  busy(true);
+  try{ await api('mp_sources?id=eq.'+id,{method:'DELETE'});        /* FKs set null */
+    S.sources=S.sources.filter(x=>x.id!==id);
+    S.items.forEach(i=>{ if(i.source_id===id) i.source_id=null; });
+    S.lists.forEach(l=>{ if(l.source_id===id) l.source_id=null; }); }
+  finally{ busy(false); }
+}
+async function setItemSource(name, id){
+  busy(true);
+  try{ await ensureItems([name]); const it=itemByName(name); if(!it) return;
+    await api('mp_items?id=eq.'+it.id,{method:'PATCH', body:{source_id:id||null}}); it.source_id=id||null; }
+  finally{ busy(false); }
+}
+function sourceSelect(value, onChange, label){
+  return el('select',{class:'ssel', 'aria-label':label, onchange:e=>onChange(e.target.value||null)},
+    el('option',{value:'', selected:value?null:''}, t('Anywhere')),
+    S.sources.map(x=>el('option',{value:x.id, selected:x.id===value?'':null}, x.name)));
+}
+
 /* Moving a line moves the catalogue item, so it stays moved next week too. */
 async function moveToAisle(name, key){
   busy(true);
@@ -702,11 +753,11 @@ function fmtAmount(qty, unit){
    every calculation runs in memory. Mutate S, then render().
    S.draft holds the half-finished recipe form for the same reason Overtime's
    does: a background refetch must not throw away what you were typing. */
-const S={view:'recipes', recipes:[], ings:[], items:[], basket:[], extras:[], aisles:[], lists:[], listItems:[], listDraft:null,
+const S={view:'recipes', recipes:[], ings:[], items:[], basket:[], extras:[], aisles:[], lists:[], listItems:[], listDraft:null, sources:[],
          recipe:null, servings:null, draft:null, cook:null, tour:null, wake:null, organise:false, importer:null, ready:false};
 
 async function loadAll(){
-  const [items, recipes, ings, basket, extras, aisleRows, lists, listItems]=await Promise.all([
+  const [items, recipes, ings, basket, extras, aisleRows, lists, listItems, sources]=await Promise.all([
     api('mp_items?select=*&order=name.asc'),
     api('mp_recipes?select=*&order=created_at.desc'),
     api('mp_recipe_items?select=*&order=pos.asc'),
@@ -714,9 +765,10 @@ async function loadAll(){
     api('mp_extras?select=*&order=created_at.asc'),
     api('mp_aisles?select=*&order=pos.asc'),
     api('mp_lists?select=*&order=created_at.asc'),
-    api('mp_list_items?select=*&order=pos.asc')
+    api('mp_list_items?select=*&order=pos.asc'),
+    api('mp_sources?select=*&order=pos.asc')
   ]);
-  S.items=items; S.recipes=recipes; S.ings=ings; S.basket=basket; S.extras=extras; S.aisles=aisleRows; S.lists=lists; S.listItems=listItems;
+  S.items=items; S.recipes=recipes; S.ings=ings; S.basket=basket; S.extras=extras; S.aisles=aisleRows; S.lists=lists; S.listItems=listItems; S.sources=sources;
   if(!S.items.length) await seedItems();
 }
 
@@ -823,7 +875,7 @@ function shopList(withEmpty){
   function line(name, aisle, el){
     const k=norm(name);
     if(!map.has(k)){ const it=itemByName(name)||{};
-      map.set(k,{key:k, name:name, name_el:el||it.name_el||null, aisle:aisle||it.aisle||'other', units:{}, from:[]}); }
+      map.set(k,{key:k, name:name, name_el:el||it.name_el||null, aisle:aisle||it.aisle||'other', units:{}, from:[], src:it.source_id||null}); }
     return map.get(k);
   }
   function addQty(L, qty, unit){
@@ -849,6 +901,7 @@ function shopList(withEmpty){
       const L=line(x.name, null, x.name_el);
       addQty(L, x.qty, x.unit);
       if(L.from.indexOf(l.name)<0) L.from.push(l.name);
+      if(!L.src && l.source_id) L.src=l.source_id;     /* the item's own place wins */
     }
   }
   for(const x of S.extras){
@@ -969,13 +1022,13 @@ async function saveList(d){
     await ensureItems(rows.map(r=>r.name));
     let l;
     if(d.id){
-      const r=await api('mp_lists?id=eq.'+d.id,{method:'PATCH', body:{name:d.name.trim()}, headers:REP.headers});
+      const r=await api('mp_lists?id=eq.'+d.id,{method:'PATCH', body:{name:d.name.trim(), source_id:d.source_id||null}, headers:REP.headers});
       if(!r[0]) throw new Error(t('That basket no longer exists — it may have been deleted on another device.'));
       l=r[0]; S.lists=S.lists.map(x=>x.id===l.id?l:x);
       await api('mp_list_items?list_id=eq.'+d.id,{method:'DELETE'});
       S.listItems=S.listItems.filter(i=>i.list_id!==d.id);
     }else{
-      const r=await api('mp_lists',{method:'POST', body:{name:d.name.trim()}, headers:REP.headers});
+      const r=await api('mp_lists',{method:'POST', body:{name:d.name.trim(), source_id:d.source_id||null}, headers:REP.headers});
       l=r[0]; S.lists.push(l);
     }
     if(rows.length){
@@ -1742,7 +1795,8 @@ function basketSection(){
       const n=S.listItems.filter(i=>i.list_id===l.id).length;
       const card=el('button',{class:'card'+(l.active?' on':''), onclick:()=>{ S.listDraft=listDraftFrom(l); render(); }},
         el('span',{class:'thumb none'}, icon('basket')),
-        el('span',{class:'txt'}, el('b',{}, l.name), el('small',{}, tn(n,'{n} item','{n} items'))));
+        el('span',{class:'txt'}, el('b',{}, l.name), el('small',{},
+          tn(n,'{n} item','{n} items')+(l.source_id&&sourceName(l.source_id) ? ' · '+sourceName(l.source_id) : ''))));
       const add=el('button',{class:'add'+(l.active?' on':''), 'aria-label':t(l.active?'Take off this week’s list':'Put on this week’s list'),
         onclick:async e=>{ e.stopPropagation();
           try{ await setListActive(l.id, !l.active); render(); }catch(err){ toast(err.message); } }});
@@ -1753,7 +1807,7 @@ function basketSection(){
       t('Things you buy together that aren’t a recipe — weekly staples, a BBQ, someone else’s list. Put one on this week’s list with +.')));
 }
 function listDraftFrom(l){
-  return {id:l.id, name:l.name, rows:S.listItems.filter(i=>i.list_id===l.id).sort((a,b)=>a.pos-b.pos)
+  return {id:l.id, name:l.name, source_id:l.source_id||null, rows:S.listItems.filter(i=>i.list_id===l.id).sort((a,b)=>a.pos-b.pos)
     .map(i=>({name:i.name, qty:i.qty==null?'':String(i.qty), unit:i.unit||''}))};
 }
 function renderListForm(){
@@ -1782,7 +1836,9 @@ function renderListForm(){
       el('div',{class:'nav'})),
     el('div',{class:'form'+(editing?' editing':'')},
       el('label',{}, t('Name'), el('input',{type:'text', value:d.name, placeholder:t('Weekly staples'),
-        autocapitalize:'sentences', oninput:e=>{ d.name=e.target.value; }}))),
+        autocapitalize:'sentences', oninput:e=>{ d.name=e.target.value; }})),
+      S.sources.length ? el('label',{}, t('Where from'),
+        sourceSelect(d.source_id||null, v=>{ d.source_id=v; }, t('Where from'))) : null),
     el('section',{},
       el('div',{class:'head'}, el('h2',{}, t('In this basket')), el('span',{class:'sub'}, d.rows.length||'')),
       picker, ings),
@@ -1812,7 +1868,12 @@ function renderShopCount(){
 /* ---------- shop tab ---------- */
 function renderShop(){
   if(S.organise) return renderOrganise();
-  const groups=shopList(), done=checked();
+  /* Filtering by where you're going keeps things with no place set: they can
+     be picked up anywhere, so they belong on every trip. */
+  const src=shopSource(), all=shopList();
+  const groups=src ? all.map(g=>({...g, rows:g.rows.filter(r=>!r.src || r.src===src)})).filter(g=>g.rows.length) : all;
+  const done=checked();
+  const usedSrc=S.sources.filter(x=>all.some(g=>g.rows.some(r=>r.src===x.id)));
   const total=groups.reduce((n,g)=>n+g.rows.length,0);
   const left=groups.reduce((n,g)=>n+g.rows.filter(r=>!done.has(r.key)).length,0);
   const app=document.getElementById('app');
@@ -1825,7 +1886,8 @@ function renderShop(){
       const btn=el('button',{class:'shop'+(done.has(L.key)?' done':''), type:'button'});
       const box=el('span',{class:'box'}); box.append(icon('check'));
       fill(btn, box,
-        el('span',{class:'nm'}, dn(L), L.from.length?el('small',{}, L.from.join(', ')):null),
+        el('span',{class:'nm'}, dn(L), L.from.length||(L.src&&!src) ? el('small',{},
+          L.from.concat(L.src&&!src ? [sourceName(L.src)] : []).join(' · ')) : null),
         amt?el('span',{class:'q'}, amt):null);
       btn.onclick=()=>{
         const set=checked();
@@ -1860,6 +1922,9 @@ function renderShop(){
       el('button',{class:'ico-only', 'aria-label':t('Organise'), title:t('Organise'), onclick:()=>{ S.organise=true; render(); }}, icon('sort'))
     ]),
     adder,
+    usedSrc.length ? el('div',{class:'quick srcchips', role:'group', 'aria-label':t('Where from')},
+      [{id:'', name:t('All')}].concat(usedSrc).map(x=>el('button',{type:'button', class:src===x.id?'on':'',
+        'aria-pressed':String(src===x.id), onclick:()=>{ setShopSource(x.id); render(); }}, x.name))) : null,
     total ? el('div',{style:'margin-top:22px'}, list)
           : el('div',{class:'empty'}, t('Nothing to buy. Add recipes to the '), el('b',{style:'color:var(--acc)'}, t('Plan')),
               t(', or type anything you need into the box above.')),
@@ -1895,11 +1960,14 @@ function renderOrganise(){
           el('button',{type:'button', class:'mv del', 'aria-label':t('Delete {x}',{x:aisleLabel(g.id)}), onclick:()=>{
             if(!confirm(t('Delete “{x}”? Anything in it moves to Other.',{x:aisleLabel(g.id)}))) return;
             run(()=>deleteAisle(g.id))(); }},'×')]),
-      g.rows.map(L=>el('div',{class:'row'},
+      g.rows.map(L=>el('div',{class:'row orgrow'},
         el('span',{class:'nm'}, dn(L)),
-        el('select',{class:'asel', 'aria-label':t('Category for {x}',{x:dn(L)}),
-          onchange:e=>run(()=>moveToAisle(L.name, e.target.value))()},
-          list.map(a=>el('option',{value:a.key, selected:a.key===g.id?'':null}, aisleLabel(a.key)))))));
+        el('div',{class:'sels'},
+          el('select',{class:'asel', 'aria-label':t('Category for {x}',{x:dn(L)}),
+            onchange:e=>run(()=>moveToAisle(L.name, e.target.value))()},
+            list.map(a=>el('option',{value:a.key, selected:a.key===g.id?'':null}, aisleLabel(a.key)))),
+          S.sources.length ? sourceSelect((itemByName(L.name)||{}).source_id||null,
+            v=>run(()=>setItemSource(L.name, v))(), t('Where to get {x}',{x:dn(L)})) : null))));
   });
 
   const newIn=el('input',{type:'text', placeholder:t('New category…'), autocapitalize:'sentences', enterkeyhint:'done'});
@@ -1942,6 +2010,7 @@ function renderSettings(){
       UNIT_PREFS.map(([k,label,opts])=>el('label',{class:'unitpref'}, t(label),
         el('div',{class:'quick'}, opts.map(o=>el('button',{class:prefs[k]===o?'on':'',
           onclick:()=>{ setUnitPref(k,o); render(); }}, o==='auto'?t('Auto'):ul(o))))))),
+    sourcesSection(),
     el('section',{},
       el('div',{class:'head'}, el('h2',{}, t('Ingredient list')), el('span',{class:'sub'}, t('{n} items',{n:S.items.length}))),
       el('p',{class:'mut', style:'margin:0 0 14px'},
@@ -1961,12 +2030,15 @@ function renderSettings(){
               if(twin && twin!==it){ toast(t('“{v}” is already {x}.',{v:v, x:dn(twin)})); e.target.value=it.name_el||''; return; }
               try{ busy(true); await api('mp_items?id=eq.'+it.id,{method:'PATCH', body:{name_el:v}}); it.name_el=v; }
               catch(err){ toast(err.message); e.target.value=it.name_el||''; } finally{ busy(false); } }})),
-        el('select',{style:'flex:none;width:132px;padding:8px 6px;font-size:13px', value:it.aisle,
-          'aria-label':t('Aisle for {x}',{x:it.name}),
-          onchange:async e=>{ const a=e.target.value;
-            try{ busy(true); await api('mp_items?id=eq.'+it.id,{method:'PATCH', body:{aisle:a}}); it.aisle=a; }
-            catch(err){ toast(err.message); } finally{ busy(false); } }},
-          aisles().map(a=>el('option',{value:a.key, selected:aisleOf(it.aisle)===a.key?'':null}, aisleLabel(a.key))))
+        el('div',{class:'sels col'},
+          el('select',{class:'asel', value:it.aisle,
+            'aria-label':t('Aisle for {x}',{x:it.name}),
+            onchange:async e=>{ const a=e.target.value;
+              try{ busy(true); await api('mp_items?id=eq.'+it.id,{method:'PATCH', body:{aisle:a}}); it.aisle=a; }
+              catch(err){ toast(err.message); } finally{ busy(false); } }},
+            aisles().map(a=>el('option',{value:a.key, selected:aisleOf(it.aisle)===a.key?'':null}, aisleLabel(a.key)))),
+          S.sources.length ? sourceSelect(it.source_id||null, async v=>{
+            try{ await setItemSource(it.name, v); }catch(err){ toast(err.message); } }, t('Where to get {x}',{x:it.name})) : null)
       )))),
     appSwitcher(),
     el('section',{},
@@ -1975,6 +2047,30 @@ function renderSettings(){
       el('div',{class:'btnrow'},
         el('button',{onclick:()=>{ setSess(null); S.ready=false; boot(); }}, t('Sign out')))),
     tabbar());
+}
+
+function sourcesSection(){
+  const add=el('input',{type:'text', placeholder:t('A shop, a market, someone’s house…'), autocapitalize:'words', enterkeyhint:'done'});
+  const go=async()=>{ const v=add.value.trim(); if(!v) return;
+    if(S.sources.some(x=>norm(x.name)===norm(v))){ toast(t('“{v}” is already on the list.',{v:v})); return; }
+    try{ await addSource(v); render(); }catch(e){ toast(e.message); } };
+  add.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); go(); } };
+  return el('section',{},
+    el('div',{class:'head'}, el('h2',{}, t('Where from'))),
+    el('p',{class:'mut', style:'margin:0 0 12px'},
+      t('The places you get things. Give an item or a basket a place, then filter the shopping list by where you’re going.')),
+    S.sources.map(x=>{
+      const inp=el('input',{type:'text', class:'aname', value:x.name, 'aria-label':t('Name of {x}',{x:x.name}),
+        onchange:async()=>{ const v=inp.value.trim();
+          if(!v || v===x.name){ inp.value=x.name; return; }
+          try{ await renameSource(x.id, v); }catch(e){ toast(e.message); inp.value=x.name; } }});
+      return el('div',{class:'orghead', style:'border:0;padding-bottom:6px'}, inp,
+        el('button',{type:'button', class:'mv del', 'aria-label':t('Delete {x}',{x:x.name}), onclick:async()=>{
+          if(!confirm(t('Delete “{x}”? Items and baskets that use it go back to “anywhere”.',{x:x.name}))) return;
+          try{ await deleteSource(x.id); render(); }catch(e){ toast(e.message); } }},'×'));
+    }),
+    el('div',{class:'orghead', style:'border:0'}, add,
+      el('button',{type:'button', class:'mv', style:'width:auto;padding:0 14px;color:var(--acc)', onclick:go}, t('Add'))));
 }
 
 /* The three apps share a login, not a codebase — this is the door between
@@ -2091,7 +2187,7 @@ document.addEventListener('visibilitychange', ()=>{
 function resetData(){
   S.ready=false; S.recipes=[]; S.ings=[]; S.items=[]; S.basket=[]; S.extras=[];
   S.recipe=null; S.servings=null; S.draft=null; S.cook=null; S.tour=null; S.organise=false; S.importer=null; S.view='recipes'; S.aisles=[];
-  S.lists=[]; S.listItems=[]; S.listDraft=null;
+  S.lists=[]; S.listItems=[]; S.listDraft=null; S.sources=[];
 }
 /* Signing in or out in one app lands in the other two straight away, instead of
    surfacing later as a confusing 401. Token rotation writes this key too, so
