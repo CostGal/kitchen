@@ -175,6 +175,12 @@
   .shop.done .box{border-color:var(--ok); background:var(--ok); color:#0E120A}
   .shop.done .nm{color:var(--ink2); text-decoration:line-through}
   .shop.done .q{color:var(--ink2); text-decoration:line-through}
+  .shopline .bell{color:var(--ink2)}
+  .shopline .bell.on{color:var(--acc)}
+  /* Add-to-Calendar picker: a full-width datetime field so iOS gets its native
+     wheel, then Set/Clear/Cancel as an ordinary button row underneath. */
+  .remind{padding:10px 2px 16px; border-bottom:1px solid var(--rule)}
+  .remind .btnrow{margin-top:8px}
 
   /* --- cook mode: one step, big, screen held awake --- */
   .cook{position:fixed; inset:0; z-index:50; background:var(--bg); display:flex; flex-direction:column;
@@ -316,7 +322,11 @@ const EL={
   'Every planned recipe merged into one list, in the order you walk the shop. Tap a line to tick it off; add anything else at the top.':'Όλες οι συνταγές του πλάνου σε μία λίστα, με τη σειρά που περπατάς στο μαγαζί. Πάτα μια γραμμή για να τη σημειώσεις· ό,τι άλλο θες, το γράφεις από πάνω.',
   'Open a recipe and tap Cook for one step at a time, big enough to read from the hob. The screen stays awake.':'Άνοιξε μια συνταγή και πάτα Μαγείρεμα για ένα βήμα τη φορά, με γράμματα που διαβάζονται από την κουζίνα. Η οθόνη μένει αναμμένη.',
   'Fruit & veg':'Μανάβικο','Bakery':'Φούρνος','Meat':'Κρέας','Fish':'Ψάρι','Dairy & eggs':'Γαλακτοκομικά',
-  'Pantry':'Ντουλάπι','Frozen':'Κατεψυγμένα','Drinks':'Ποτά','Household':'Σπίτι','Other':'Άλλα'
+  'Pantry':'Ντουλάπι','Frozen':'Κατεψυγμένα','Drinks':'Ποτά','Household':'Σπίτι','Other':'Άλλα',
+  'Remind me about {x}':'Υπενθύμιση για {x}','Remind me about this shop':'Υπενθύμιση για αυτά τα ψώνια',
+  'Set':'Ορισμός','Clear':'Αφαίρεση','Reminder: {x}':'Υπενθύμιση: {x}',
+  'Reminder saved — check your downloads to add it to Calendar.':'Η υπενθύμιση αποθηκεύτηκε — δες τις λήψεις σου για να την προσθέσεις στο Ημερολόγιο.',
+  'Shopping list':'Λίστα για ψώνια'
 };
 function t(s, v){
   let r=(LANG==='el' && EL[s]) || s;
@@ -784,6 +794,59 @@ async function delExtra(id){
   try{ await api('mp_extras?id=eq.'+id,{method:'DELETE'}); S.extras=S.extras.filter(x=>x.id!==id); }
   finally{ busy(false); }
 }
+async function setExtraReminder(id, when){
+  busy(true);
+  try{
+    const r=await api('mp_extras?id=eq.'+id,{method:'PATCH', headers:REP.headers, body:{remind_at: when?when.toISOString():null}});
+    if(r[0]) S.extras=S.extras.map(x=>x.id===id?r[0]:x);
+  } finally{ busy(false); }
+}
+
+/* ---------- reminders (Add to Calendar) ---------- */
+/* No backend, no keys: a reminder is a downloaded .ics with an alarm, so it
+   still fires with Kitchen fully closed — the trade-off is that the alert
+   comes from the Calendar app, not from Kitchen. See issue #9. */
+function icsFile(title, when, lines){
+  const pad=n=>String(n).padStart(2,'0');
+  const stamp=d=>d.getUTCFullYear()+pad(d.getUTCMonth()+1)+pad(d.getUTCDate())+'T'+pad(d.getUTCHours())+pad(d.getUTCMinutes())+pad(d.getUTCSeconds())+'Z';
+  const esc=s=>String(s||'').replace(/\\/g,'\\\\').replace(/\n/g,'\\n').replace(/,/g,'\\,').replace(/;/g,'\\;');
+  const uid=(self.crypto&&crypto.randomUUID?crypto.randomUUID():(Date.now()+Math.random().toString(36).slice(2)))+'@kitchen.local';
+  return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Kitchen//Reminder//EN','CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT','UID:'+uid,'DTSTAMP:'+stamp(new Date()),'DTSTART:'+stamp(when),
+    'SUMMARY:'+esc(title),
+    (lines&&lines.length)?'DESCRIPTION:'+esc(lines.join('\n')):null,
+    'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+esc(title),'TRIGGER:PT0M','END:VALARM',
+    'END:VEVENT','END:VCALENDAR'].filter(Boolean).join('\r\n');
+}
+function downloadIcs(name, text){
+  const blob=new Blob([text],{type:'text/calendar;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=el('a',{href:url, download:name});
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+function icsFilename(title){
+  return (norm(title).replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'reminder')+'.ics';
+}
+function remindLabel(iso){
+  const d=new Date(iso);
+  return t('Reminder: {x}',{x:d.toLocaleString(LANG==='el'?'el-GR':'en-GB',{weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'})});
+}
+/* Which line has its date/time picker open — transient UI state, reset by any
+   render triggered from elsewhere, same as closing on a background refetch. */
+let remindFor=null;
+function reminderRow(value, onSet, onClear){
+  const d=value?new Date(value):new Date(Date.now()+16*3600*1000);
+  d.setSeconds(0,0);
+  const iso=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  const input=el('input',{type:'datetime-local', value:iso});
+  return el('div',{class:'remind'},
+    input,
+    el('div',{class:'btnrow'},
+      el('button',{onclick:()=>{ if(input.value) onSet(new Date(input.value)); }}, t('Set')),
+      value?el('button',{onclick:onClear}, t('Clear')):null,
+      el('button',{onclick:()=>{ remindFor=null; render(); }}, t('Cancel'))));
+}
 
 /* ---------- shared bits ---------- */
 function topbar(title, right){
@@ -1166,8 +1229,9 @@ function renderShop(){
       const amt=amountText(L);
       const btn=el('button',{class:'shop'+(done.has(L.key)?' done':''), type:'button'});
       const box=el('span',{class:'box'}); box.append(icon('check'));
+      const sub=L.from.length?L.from.join(', '):(L.extra&&L.extra.remind_at?remindLabel(L.extra.remind_at):null);
       fill(btn, box,
-        el('span',{class:'nm'}, dn(L), L.from.length?el('small',{}, L.from.join(', ')):null),
+        el('span',{class:'nm'}, dn(L), sub?el('small',{}, sub):null),
         amt?el('span',{class:'q'}, amt):null);
       btn.onclick=()=>{
         const set=checked();
@@ -1182,11 +1246,29 @@ function renderShop(){
       /* One-off items get a visible ×. Long-press was the obvious gesture, but
          iOS Safari fires the system callout instead of contextmenu, which would
          make an extra unremovable on the one device this is built for. */
-      if(L.extra) list.append(el('div',{class:'shopline'}, btn,
-        el('button',{class:'x', type:'button', 'aria-label':t('Remove {x}',{x:dn(L)}), onclick:async()=>{
-          try{ await delExtra(L.extra.id); render(); }catch(err){ toast(err.message); }
-        }},'×')));
-      else list.append(btn);
+      if(L.extra){
+        const x=L.extra;
+        list.append(el('div',{class:'shopline'}, btn,
+          el('button',{class:'x bell'+(x.remind_at?' on':''), type:'button',
+            'aria-label':t('Remind me about {x}',{x:dn(L)}),
+            onclick:()=>{ remindFor=remindFor===x.id?null:x.id; render(); }}, icon('clock')),
+          el('button',{class:'x', type:'button', 'aria-label':t('Remove {x}',{x:dn(L)}), onclick:async()=>{
+            try{ await delExtra(x.id); render(); }catch(err){ toast(err.message); }
+          }},'×')));
+        if(remindFor===x.id) list.append(reminderRow(x.remind_at,
+          async when=>{
+            try{
+              await setExtraReminder(x.id, when);
+              downloadIcs(icsFilename(dn(L)), icsFile(dn(L), when));
+              remindFor=null; render();
+              toast(t('Reminder saved — check your downloads to add it to Calendar.'), true);
+            }catch(err){ toast(err.message); }
+          },
+          async()=>{
+            try{ await setExtraReminder(x.id, null); remindFor=null; render(); }
+            catch(err){ toast(err.message); }
+          }));
+      } else list.append(btn);
     });
   });
 
@@ -1198,9 +1280,22 @@ function renderShop(){
   fill(app,
     topbar(t('Shop'), [
       el('span',{class:'sub', id:'shopcount', style:'font-size:13px;color:var(--ink2)'}, t('{n} left',{n:left})),
+      total ? el('button',{class:'ico-only', 'aria-label':t('Remind me about this shop'),
+        onclick:()=>{ remindFor=remindFor==='shop'?null:'shop'; render(); }}, icon('clock')) : null,
       total ? el('button',{onclick:()=>{ setChecked(new Set()); render(); }}, t('Reset')) : null
     ]),
     adder,
+    remindFor==='shop' ? reminderRow(null, when=>{
+      const lines=[];
+      groups.forEach(g=>{
+        const rows=g.rows.filter(r=>!done.has(r.key)); if(!rows.length) return;
+        lines.push(g.label.toUpperCase());
+        rows.forEach(r=>{ const amt=amountText(r); lines.push('- '+dn(r)+(amt?' ('+amt+')':'')); });
+      });
+      downloadIcs(icsFilename(t('Shopping list')), icsFile(t('Shopping list'), when, lines));
+      remindFor=null; render();
+      toast(t('Reminder saved — check your downloads to add it to Calendar.'), true);
+    }, null) : null,
     total ? el('div',{style:'margin-top:22px'}, list)
           : el('div',{class:'empty'}, t('Nothing to buy. Add recipes to the '), el('b',{style:'color:var(--acc)'}, t('Plan')),
               t(', or type anything you need into the box above.')),

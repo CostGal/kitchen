@@ -65,7 +65,8 @@ create table mp_extras (
   qty        numeric check (qty is null or qty >= 0),
   unit       text,
   aisle      text not null default 'other',
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  remind_at  timestamptz
 );
 create index mp_extras_user on mp_extras (user_id, created_at);
 
