@@ -218,6 +218,46 @@ Mirrors Ledger's and Overtime's conventions:
   wet hands. Locks are dropped when the page hides, so `visibilitychange`
   re-acquires it.
 
+## Importing a recipe (`renderImport`)
+
+Two ways in, one parser, and **nothing is written until you press Save**: the
+result becomes `S.draft` and opens in the ordinary recipe form, which is the
+preview.
+
+- **From a link** → the Edge Function `recipe-import`
+  (`supabase/functions/recipe-import/index.ts`, deploy it with the Supabase
+  MCP `deploy_edge_function`; the file is the source of truth). It fetches the
+  page with its own honest user agent and returns the page's schema.org
+  `Recipe` object (trimmed), or the page's plain text if there isn't one. It
+  does no parsing of its own.
+  - **Auth is done inside the function** (`signedIn`, which asks Supabase Auth
+    about the bearer token), and it is deployed with `verify_jwt: false` on
+    purpose. The gateway's check lets the publishable key through, and that
+    key is public in this repo, so relying on it would make the function an
+    open proxy. Don't "fix" this by turning `verify_jwt` back on and dropping
+    `signedIn`.
+  - Refuses non-http(s), odd ports, credentials in URLs, localhost/`.local`,
+    and anything resolving to a private address; follows at most 5 redirects,
+    re-checking each; 10 s timeout, 3 MB cap.
+  - A site that blocks it (e.g. a Cloudflare challenge) gets `{error:'blocked'}`
+    and the app says to paste the text instead. **Never add anything that
+    impersonates a browser or solves challenges** to get round that.
+    akispetretzikis.com works with the honest fetch as of 2026-09.
+- **Paste the text** → `fromText`: headings in either language (Υλικά /
+  Ingredients, Εκτέλεση / Method…) split the sections; without headings each
+  line is sorted by its shape. Lines ending in `:` are sub-headings; comments /
+  related-links headings end the read.
+
+Both end in `draftFromImport`: `parseIngredient` (quantity incl. ½ and 1 1/2,
+Greek and English unit words mapped onto the app's own units, notes and
+parentheses dropped) then `matchItem`, which compares words by `fold`
+sound-key with room for Greek case/plural endings, in any order. The most
+specific catalogue name wins; failing that, a line that says less than a
+catalogue name ("πιπέρι") takes the shortest name containing it. Unmatched
+lines are tagged **new** in the form; tapping any imported name swaps in an
+`itemPicker` to re-match it. Heuristics are allowed to be wrong because the
+preview shows the original line under each one.
+
 ## YouTube
 
 No API key, no quota, no network call to Google until you ask for one:
@@ -262,7 +302,6 @@ Deliberately left out of v1, in rough order of what's worth doing next:
   week", not "Tuesday dinner". Adding days means a `date` on `mp_basket` and a
   week grid; the shopping list maths doesn't change.
 - **Pantry stock** ("I already have rice"), which would subtract from the list.
-- **Paste-a-recipe parsing.** A heuristic parser over pasted text, previewing
-  before it writes — the same shape as Overtime's CSV import
-  (`parseCsv` → preview → dedupe). An LLM version goes in an Edge Function, per
-  the privacy invariants above.
+- **An LLM pass over imports**, for pages with no structured data. It would
+  go in an Edge Function with the key as a secret, per the privacy invariants
+  above.

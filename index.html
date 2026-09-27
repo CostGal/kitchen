@@ -192,6 +192,13 @@
   .ing .q{flex:none; width:66px; text-align:center; padding:9px 4px}
   .ing .u{flex:none; width:60px; text-align:center; padding:9px 4px; font-size:14px}
   .ing .nm{flex:1; min-width:0; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  /* An ingredient name is a button so an imported line can be re-matched. */
+  button.nm{background:none; border:0; padding:4px 2px; text-align:left; min-height:42px; color:var(--ink)}
+  .ing .nm.imp{white-space:normal}
+  .ing .nm .tag{display:inline-block; margin-left:6px; padding:0 6px; border:1px solid var(--acc-line); border-radius:6px;
+    font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--acc); vertical-align:2px}
+  .ing .nm small{display:block; font-size:12px; color:var(--ink2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .ing .fixer{flex:1; min-width:0}
   .ing .x{flex:none; width:38px; height:42px; font-size:19px; line-height:1; color:var(--ink2);
     background:none; border:1px solid transparent; border-radius:9px}
 
@@ -371,6 +378,22 @@ const EL={
   'Send link':'Αποστολή link','Sign in':'Σύνδεση','Back to sign in':'Πίσω στη σύνδεση','Forgot password?':'Ξέχασες τον κωδικό;',
   'New password':'Νέος κωδικός','Try again':'Δοκίμασε ξανά',
   'Say an ingredient':'Πες ένα υλικό','Microphone access is off for this site.':'Το μικρόφωνο είναι κλειστό για αυτή τη σελίδα.','Didn’t catch that.':'Δεν το έπιασα.',
+  'Import':'Εισαγωγή','Import a recipe':'Εισαγωγή συνταγής','From a link':'Από link','Or paste it':'Ή επικόλλησέ τη',
+  'Read the recipe':'Διάβασε τη συνταγή','Use this text':'Χρησιμοποίησε αυτό το κείμενο','Reading the page…':'Διαβάζω τη σελίδα…',
+  'Nothing is saved until you press Save — the recipe opens in the form first so you can check it. Ingredients Kitchen doesn’t know yet are marked new.':'Τίποτα δεν αποθηκεύεται πριν πατήσεις Αποθήκευση — η συνταγή ανοίγει πρώτα στη φόρμα για να την ελέγξεις. Τα υλικά που δεν ξέρει ακόμα το Kitchen σημειώνονται ως νέα.',
+  'Paste a whole recipe — title, ingredients, method. Headings like “Ingredients” / “Υλικά” help.':'Επικόλλησε ολόκληρη τη συνταγή — τίτλο, υλικά, εκτέλεση. Βοηθούν επικεφαλίδες όπως «Υλικά» / «Εκτέλεση».',
+  'That site doesn’t let apps read its pages. Open it, copy the recipe, and paste it below.':'Αυτή η σελίδα δεν αφήνει εφαρμογές να τη διαβάσουν. Άνοιξέ τη, αντίγραψε τη συνταγή και επικόλλησέ τη από κάτω.',
+  'That doesn’t look like a web address.':'Αυτό δε μοιάζει με διεύθυνση σελίδας.','Couldn’t reach that site.':'Δεν ήταν δυνατή η σύνδεση με τη σελίδα.',
+  'Couldn’t find a recipe on that page. Try pasting the text instead.':'Δε βρέθηκε συνταγή σε αυτή τη σελίδα. Δοκίμασε να επικολλήσεις το κείμενο.',
+  'Couldn’t read that page. Try pasting the text instead.':'Η σελίδα δε διαβάστηκε. Δοκίμασε να επικολλήσεις το κείμενο.',
+  'Couldn’t find a recipe in that. Try pasting the text instead.':'Δε βρέθηκε συνταγή εκεί. Δοκίμασε να επικολλήσεις το κείμενο.',
+  'Couldn’t reach the importer — check your connection.':'Δεν ήταν δυνατή η εισαγωγή — έλεγξε τη σύνδεσή σου.',
+  'Check it over, then Save.':'Έλεγξέ τη και πάτα Αποθήκευση.','pasted text':'επικολλημένο κείμενο',
+  'Imported — not saved yet.':'Εισαγωγή — δεν έχει αποθηκευτεί ακόμα.',
+  '{n} ingredient is new to Kitchen — tap it to match it to one you have, or leave it and it joins your list.':'{n} υλικό είναι νέο για το Kitchen — πάτα το για να το αντιστοιχίσεις σε κάποιο που έχεις, ή άφησέ το να μπει στη λίστα σου.',
+  '{n} ingredients are new to Kitchen — tap one to match it to one you have, or leave them and they join your list.':'{n} υλικά είναι νέα για το Kitchen — πάτα ένα για να το αντιστοιχίσεις σε κάποιο που έχεις, ή άφησέ τα να μπουν στη λίστα σου.',
+  'Every ingredient matched your list. Check the amounts, then Save.':'Όλα τα υλικά βρέθηκαν στη λίστα σου. Έλεγξε τις ποσότητες και πάτα Αποθήκευση.',
+  'Which ingredient?':'Ποιο υλικό;','Change {x}':'Αλλαγή: {x}','new':'νέο',
   'Starting the microphone…':'Ανοίγει το μικρόφωνο…','Listening…':'Σε ακούω…','Hearing you…':'Σε ακούω να μιλάς…','Got it…':'Το έπιασα…',
   'Add “{x}”':'Προσθήκη «{x}»','New':'Νέο','Play recipe video':'Αναπαραγωγή βίντεο','Recipe video':'Βίντεο συνταγής','Play':'Αναπαραγωγή',
   'Less':'Λιγότερες','More':'Περισσότερες',
@@ -648,7 +671,7 @@ function fmtAmount(qty, unit){
    S.draft holds the half-finished recipe form for the same reason Overtime's
    does: a background refetch must not throw away what you were typing. */
 const S={view:'recipes', recipes:[], ings:[], items:[], basket:[], extras:[], aisles:[],
-         recipe:null, servings:null, draft:null, cook:null, tour:null, wake:null, organise:false, ready:false};
+         recipe:null, servings:null, draft:null, cook:null, tour:null, wake:null, organise:false, importer:null, ready:false};
 
 async function loadAll(){
   const [items, recipes, ings, basket, extras, aisleRows]=await Promise.all([
@@ -1053,7 +1076,9 @@ function voiceButton(onHeard){
 function renderRecipes(){
   const app=document.getElementById('app');
   fill(app,
-    topbar(t('Recipes'), el('button',{class:'pri', onclick:()=>{ S.draft=blankDraft(); S.recipe='new'; render(); }}, t('+ New'))),
+    topbar(t('Recipes'), [
+      el('button',{onclick:()=>{ S.importer={url:'', text:''}; render(); }}, t('Import')),
+      el('button',{class:'pri', onclick:()=>{ S.draft=blankDraft(); S.recipe='new'; render(); }}, t('+ New'))]),
     S.recipes.length
       ? el('div',{class:'cards'}, S.recipes.map(recipeCard))
       : el('div',{class:'empty'}, t('No recipes yet. Tap '), el('b',{style:'color:var(--acc)'}, t('+ New')),
@@ -1201,6 +1226,226 @@ function renderTour(){
                       : el('button',{class:'pri', onclick:endTour}, t('Start')))));
 }
 
+/* ---------- import: a link or pasted text → a draft in the recipe form ----------
+   Nothing is written here. The result lands in S.draft and opens in the
+   ordinary form, which IS the preview: you check it, fix what's wrong, and
+   Save is the only thing that touches the database. */
+async function callFn(name, body, retry){
+  if(retry===undefined) retry=true;
+  const s=sess(); if(!s) throw new Error('signed out');
+  let r;
+  try{
+    r=await fetch(SB_URL+'/functions/v1/'+name,{method:'POST',
+      headers:{apikey:SB_KEY, Authorization:'Bearer '+s.access_token, 'Content-Type':'application/json'},
+      body:JSON.stringify(body)});
+  }catch(e){ throw new Error(t('Couldn’t reach the importer — check your connection.')); }
+  if(r.status===401 && retry){
+    try{ await refreshSession(); }catch(e){ if(!e.offline){ setSess(null); boot(); } throw e; }
+    return callFn(name, body, false);
+  }
+  return r.json().catch(()=>({error:'http'}));
+}
+/* Recipe sites put entities and the odd <br> in their JSON-LD. DOMParser
+   documents never run scripts, so this is only ever text. */
+function plain(s){
+  if(s==null) return '';
+  const h=String(s).replace(/<br\s*\/?>/gi,'\n');
+  return (new DOMParser().parseFromString(h,'text/html').body.textContent||'')
+    .replace(/[ \t ]+/g,' ').replace(/ *\n */g,'\n').trim();
+}
+function isoMinutes(v){
+  const m=String(v||'').match(/P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?/i); if(!m) return null;
+  const n=(+(m[1]||0))*1440+(+(m[2]||0))*60+(+(m[3]||0)); return n>0?n:null;
+}
+function fromLd(ld, yt, url){
+  const steps=[];
+  (function walk(x){
+    if(!x) return;
+    if(typeof x==='string'){ plain(x).split(/\n+/).forEach(s=>s.trim()&&steps.push(s.trim())); return; }
+    if(Array.isArray(x)){ x.forEach(walk); return; }
+    if(x.itemListElement){ walk(x.itemListElement); return; }       /* HowToSection */
+    walk(x.text||x.name);
+  })(ld.recipeInstructions);
+  const y=[].concat(ld.recipeYield||[]).map(v=>String(v).match(/\d+/)).find(Boolean);
+  const vids=[].concat(ld.video||[]).flatMap(v=>typeof v==='string'?[v]:[v.embedUrl,v.contentUrl,v.url]).filter(Boolean);
+  return {
+    title:plain(ld.name).slice(0,200),
+    servings:y?Math.max(1,Math.min(99,+y[0])):null,
+    minutes:isoMinutes(ld.totalTime) || ((isoMinutes(ld.prepTime)||0)+(isoMinutes(ld.cookTime)||0)) || null,
+    steps:steps,
+    ingredients:[].concat(ld.recipeIngredient||[]).map(plain).filter(Boolean),
+    video:vids.map(ytId).find(Boolean) || yt || '',
+    source:url||''
+  };
+}
+
+/* Headings a pasted recipe tends to have, in both languages. Anything that
+   looks like the end of the recipe (comments, related links) stops the read. */
+const ING_HEAD=/^(υλικά|τα υλικά|συστατικά|ingredients?)(?=[\s:]|$)\s*:?$/i;
+const STEP_HEAD=/^(εκτέλεση|οδηγίες|μέθοδος|διαδικασία|παρασκευή|βήματα|method|instructions?|directions?|preparation|steps)(?=[\s:]|$)\s*:?$/i;
+const END_HEAD=/^(σχόλια|σχετικές|δείτε (επίσης|ακόμα)|μπορεί να σας|διατροφική|comments?|related|you may also|nutrition|reviews?|share)(?=[\s:]|$)/i;
+function fromText(text, yt, url){
+  const lines=String(text||'').split(/\r?\n/).map(l=>l.replace(/^[\s•·\-–*▪◦]+/,'').trim()).filter(Boolean);
+  let title='', mode=null, ings=[], steps=[], headed=false;
+  for(const l of lines){
+    if(END_HEAD.test(l) && (ings.length||steps.length)) break;
+    if(ING_HEAD.test(l)){ mode='i'; headed=true; continue; }
+    if(STEP_HEAD.test(l)){ mode='s'; headed=true; continue; }
+    if(!title && l.length<=100 && !looksLikeIngredient(l)){ title=l; continue; }
+    if(mode==='i'){ if(!/:$/.test(l)) ings.push(l); continue; }     /* "Για τη σάλτσα:" is a sub-heading */
+    if(mode==='s'){ steps.push(l.replace(/^\d+[.)]\s*/,'')); continue; }
+    /* No headings seen yet: sort each line by its shape. */
+    if(!headed){ if(looksLikeIngredient(l)) ings.push(l); else if(l.length>25) steps.push(l.replace(/^\d+[.)]\s*/,'')); }
+  }
+  return {title:title.slice(0,200), servings:null, minutes:null, steps:steps.slice(0,80),
+          ingredients:ings.slice(0,120), video:yt||'', source:url||''};
+}
+
+/* Quantity · unit · name. Stored units stay the app's own (g, tbsp…), so a
+   Greek "κ.σ." or an English "tablespoons" both land on tbsp and FAM's maths
+   never sees anything new. Anything unrecognised is left in the name rather
+   than guessed at. */
+const FRAC={'½':.5,'¼':.25,'¾':.75,'⅓':1/3,'⅔':2/3,'⅛':.125};
+const UNIT_ALIAS=[
+  [/^(γρ|γραμ|γραμμάρια|γραμμαρια|gr|g|grams?|grammes?)$/,'g'], [/^(κιλό|κιλά|κιλο|κιλα|kg|kilos?|kilograms?)$/,'kg'],
+  [/^(ml|μλ|mls|millilit(?:re|er)s?)$/,'ml'], [/^(λίτρο|λίτρα|λιτρο|λιτρα|l|lt|lit(?:re|er)s?)$/,'l'],
+  [/^(κ\.?σ|κουταλιά|κουταλιές|κουταλια|κουταλιες|tbsp|tbs|tablespoons?)$/,'tbsp'],
+  [/^(κ\.?γ|κουταλάκι|κουταλάκια|κουταλακι|κουταλακια|tsp|teaspoons?)$/,'tsp'],
+  [/^(σκ|σκελίδα|σκελίδες|σκελιδα|σκελιδες|cloves?)$/,'clove'], [/^(πρέζα|πρεζα|pinch(?:es)?)$/,'pinch'],
+  [/^(ματσάκι|ματσάκια|ματσακι|ματσακια|bunch(?:es)?)$/,'bunch'], [/^(κονσέρβα|κονσέρβες|κονσερβα|κονσερβες|tins?|cans?)$/,'tin'],
+  [/^(συσκευασία|συσκευασίες|πακέτο|πακέτα|packs?|packets?)$/,'pack'], [/^(φλιτζάνι|φλιτζάνια|φλ|cups?)$/,'cup'],
+  [/^(τεμ|τεμάχιο|τεμάχια|pcs|pieces?)$/,'pcs']];
+const UNIT_TAIL=/^(σούπας|σουπας|γλυκού|γλυκου|τσαγιού|τσαγιου|of)$/i;
+function parseQty(s){
+  s=s.replace(/(\d)\s*([½¼¾⅓⅔⅛])/,(m,d,f)=>String(+d+FRAC[f]));
+  const m=s.match(/^(\d+(?:[.,]\d+)?(?:\s+\d+\/\d+)?|\d+\/\d+|[½¼¾⅓⅔⅛])(?:\s*[-–]\s*(?:\d+(?:[.,]\d+)?|[½¼¾⅓⅔⅛]))?\s*/);
+  if(!m) return null;
+  let q=m[1].trim(), v;
+  if(FRAC[q]!=null) v=FRAC[q];
+  else if(/\//.test(q)){ const p=q.split(/\s+/); v=p.reduce((n,x)=>{ const f=x.split('/'); return n+(f[1]?(+f[0])/(+f[1]):+x); },0); }
+  else v=+q.replace(',','.');
+  return isFinite(v) ? {qty:Math.round(v*1000)/1000, rest:s.slice(m[0].length)} : null;
+}
+function unitOf(tok){
+  const k=bare(tok).replace(/\.$/,'');
+  for(const [re,u] of UNIT_ALIAS) if(re.test(k)) return u;
+  return null;
+}
+function looksLikeIngredient(l){
+  if(l.length>90) return false;
+  if(parseQty(l)) return true;
+  const m=l.match(/^(\S+)/); return !!(m && unitOf(m[1]));
+}
+function parseIngredient(line){
+  let s=plain(line).replace(/\s+/g,' ').trim(), qty=null, unit='';
+  const q=parseQty(s); if(q){ qty=q.qty; s=q.rest; }
+  /* "100g" sticks the unit to the number; after parseQty it's the next token. */
+  const m=s.match(/^([^\s\d]+)\s*/);
+  if(m){ const u=unitOf(m[1]); if(u){ unit=u; s=s.slice(m[0].length);
+    const tail=s.match(/^(\S+)\s*/); if(tail && UNIT_TAIL.test(bare(tail[1]))) s=s.slice(tail[0].length); } }
+  let name=s.replace(/\([^)]*\)/g,' ').split(/[,;]| - | – /)[0].replace(/\b\d+\s*%/g,'').replace(/\s+/g,' ').trim();
+  if(!name) name=s.trim()||plain(line);
+  if(qty!=null && !unit) unit='pcs';
+  return {qty:qty, unit:unit, name:name, src:plain(line)};
+}
+
+/* Imported names are written the way a recipe reads, not the way the
+   catalogue is: "μοσχαρίσιο κιμά" has to find "Μοσχαρίσιος κιμάς", "2 large
+   eggs" has to find "Eggs". So words are compared by sound-key (fold) with a
+   little room for Greek case and plural endings, in any order. A catalogue
+   name matches when every one of its words is in the line; the most specific
+   match wins ("Tomato paste" beats "Tomato"). */
+function wordsOf(s){ return bare(s).split(/[^a-z0-9α-ω]+/).filter(w=>w.length>=3).map(fold); }
+function sameWord(a, b){
+  if(a===b) return true;
+  let cp=0; while(cp<a.length && cp<b.length && a[cp]===b[cp]) cp++;
+  return cp>=3 && cp>=Math.max(a.length,b.length)-2;
+}
+function matchItem(name){
+  const hit=itemByName(name); if(hit) return hit;
+  const words=wordsOf(name); if(!words.length) return null;
+  let best=null, score=0;
+  for(const it of S.items) for(const n of [it.name, it.name_el]){
+    if(!n) continue;
+    const need=wordsOf(n); if(!need.length) continue;
+    if(!need.every(w=>words.some(x=>sameWord(w,x)))) continue;
+    const sc=need.length*100+need.join('').length;
+    if(sc>score){ score=sc; best=it; }
+  }
+  if(best) return best;
+  /* The other way round, for a line that says less than the catalogue does:
+     "πιπέρι" → "Μαύρο πιπέρι". Shortest name wins, so it lands on the plain
+     thing rather than on something more particular. */
+  let len=1e9;
+  for(const it of S.items) for(const n of [it.name, it.name_el]){
+    if(!n) continue;
+    const have=wordsOf(n);
+    if(words.every(w=>have.some(x=>sameWord(w,x))) && n.length<len){ len=n.length; best=it; }
+  }
+  return best;
+}
+function draftFromImport(r){
+  const rows=r.ingredients.map(line=>{
+    const p=parseIngredient(line), it=matchItem(p.name);
+    const nm=it ? it.name : p.name.charAt(0).toUpperCase()+p.name.slice(1);
+    return {name:nm, qty:p.qty==null?'':String(p.qty), unit:p.unit || (it&&p.qty!=null?it.unit||'':''), src:p.src, isNew:!it};
+  });
+  return {id:null, title:r.title||'', servings:r.servings||2, minutes:r.minutes||null, video:r.video||'',
+    steps:r.steps.join('\n'), note:r.source||'', rows:rows, imported:r.source||t('pasted text')};
+}
+
+function renderImport(){
+  const I=S.importer, app=document.getElementById('app');
+  const msg=el('p',{class:'msg'});
+  const say=(m,err)=>{ msg.textContent=m; msg.className='msg'+(err?' err':''); };
+  const open=r=>{
+    if(!r.ingredients.length && !r.steps.length){ say(t('Couldn’t find a recipe in that. Try pasting the text instead.'), true); return; }
+    S.draft=draftFromImport(r); S.recipe='new'; S.importer=null; render();
+    toast(t('Check it over, then Save.'), true);
+  };
+  const url=el('input',{type:'url', value:I.url, placeholder:'https://akispetretzikis.com/recipe/…', inputmode:'url',
+    autocapitalize:'off', autocorrect:'off', spellcheck:'false', oninput:e=>{ I.url=e.target.value; }});
+  const fetchIt=async()=>{
+    const u=I.url.trim(); if(!u){ url.focus(); return; }
+    say(t('Reading the page…')); busy(true);
+    try{
+      const r=await callFn('recipe-import',{url:u});
+      if(r.ld) return open(fromLd(r.ld, r.yt, r.url));
+      if(r.text) return open(fromText(r.text, r.yt, r.url));
+      const why={blocked:'That site doesn’t let apps read its pages. Open it, copy the recipe, and paste it below.',
+        'bad-url':'That doesn’t look like a web address.', unreachable:'Couldn’t reach that site.',
+        'no-recipe':'Couldn’t find a recipe on that page. Try pasting the text instead.'}[r.error];
+      say(t(why||'Couldn’t read that page. Try pasting the text instead.'), true);
+    }catch(e){ say(e.message, true); }
+    finally{ busy(false); }
+  };
+  url.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); fetchIt(); } };
+  const text=el('textarea',{rows:'8', placeholder:t('Paste a whole recipe — title, ingredients, method. Headings like “Ingredients” / “Υλικά” help.'),
+    oninput:e=>{ I.text=e.target.value; }}, I.text);
+
+  fill(app,
+    el('div',{class:'topbar'},
+      el('div',{class:'nav'}, el('button',{class:'ico-only','aria-label':t('Back'), onclick:()=>{ S.importer=null; render(); }},'←')),
+      el('h1',{style:'flex:1;min-width:0;font-size:18px;letter-spacing:.04em'}, t('Import a recipe')),
+      el('div',{class:'nav'})),
+    el('p',{class:'mut', style:'margin:0 0 18px'},
+      t('Nothing is saved until you press Save — the recipe opens in the form first so you can check it. Ingredients Kitchen doesn’t know yet are marked new.')),
+    el('section',{},
+      el('div',{class:'head'}, el('h2',{}, t('From a link'))),
+      url,
+      el('div',{class:'btnrow', style:'margin-top:10px'}, el('button',{class:'pri', onclick:fetchIt}, t('Read the recipe'))),
+      msg),
+    el('section',{},
+      el('div',{class:'head'}, el('h2',{}, t('Or paste it'))),
+      text,
+      el('div',{class:'btnrow', style:'margin-top:10px'}, el('button',{onclick:()=>{
+        if(!I.text.trim()){ text.focus(); return; }
+        open(fromText(I.text,'',''));
+      }}, t('Use this text')))),
+    tabbar());
+  if(!I.url && !I.text) url.focus();
+}
+
 /* ---------- recipe form ---------- */
 function blankDraft(){ return {id:null, title:'', servings:2, minutes:null, video:'', steps:'', note:'', rows:[]}; }
 function draftFrom(r){
@@ -1214,15 +1459,48 @@ function renderForm(){
   const app=document.getElementById('app');
 
   const ings=el('div',{class:'ings'});
+  /* Imported rows carry the line they came from and whether the catalogue
+     knew them. Tapping the name swaps in a picker, so a wrong match or a
+     would-be duplicate is fixed in place instead of saved. */
+  let fixing=-1;
+  const banner=d.imported ? el('div',{class:'status'}) : null;
+  const paintBanner=()=>{
+    if(!banner) return;
+    const fresh=d.rows.filter(r=>r.isNew && !itemByName(r.name)).length;
+    fill(banner, el('b',{}, t('Imported — not saved yet.')), ' ',
+      fresh ? tn(fresh,'{n} ingredient is new to Kitchen — tap it to match it to one you have, or leave it and it joins your list.',
+                       '{n} ingredients are new to Kitchen — tap one to match it to one you have, or leave them and they join your list.')
+            : t('Every ingredient matched your list. Check the amounts, then Save.'));
+  };
   const paintIngs=()=>{
-    fill(ings, d.rows.map((row,idx)=>el('div',{class:'ing'},
-      el('input',{class:'q', type:'text', inputmode:'decimal', placeholder:'–', value:row.qty,
-        'aria-label':t('Quantity for {x}',{x:row.name}), oninput:e=>{ row.qty=e.target.value; }}),
-      el('input',{class:'u', type:'text', placeholder:t('unit'), value:row.unit, list:'units',
-        'aria-label':t('Unit for {x}',{x:row.name}), oninput:e=>{ row.unit=e.target.value; }}),
-      el('span',{class:'nm'}, dn(itemByName(row.name)||row)),
-      el('button',{class:'x', type:'button','aria-label':t('Remove {x}',{x:row.name}),
-        onclick:()=>{ d.rows.splice(idx,1); paintIngs(); }},'×'))));
+    paintBanner();
+    fill(ings, d.rows.map((row,idx)=>{
+      const known=!!itemByName(row.name);
+      let name;
+      if(idx===fixing){
+        name=itemPicker(t('Which ingredient?'), picked=>{
+          const it=itemByName(picked);
+          row.name=picked; row.isNew=!it; if(!row.unit && it && it.unit) row.unit=it.unit;
+          fixing=-1; paintIngs();
+        });
+        name.classList.add('fixer'); name.input.value=row.name;
+        setTimeout(()=>{ name.input.focus(); name.input.select(); }, 0);
+      } else {
+        name=el('button',{type:'button', class:'nm'+(row.src?' imp':''), 'aria-label':t('Change {x}',{x:dn(itemByName(row.name)||row)}),
+          onclick:()=>{ fixing=idx; paintIngs(); }},
+          dn(itemByName(row.name)||row),
+          row.isNew && !known ? el('span',{class:'tag'}, t('new')) : null,
+          row.src && norm(row.src)!==norm(row.name) ? el('small',{}, row.src) : null);
+      }
+      return el('div',{class:'ing'+(idx===fixing?' fixing':'')},
+        el('input',{class:'q', type:'text', inputmode:'decimal', placeholder:'–', value:row.qty,
+          'aria-label':t('Quantity for {x}',{x:row.name}), oninput:e=>{ row.qty=e.target.value; }}),
+        el('input',{class:'u', type:'text', placeholder:t('unit'), value:row.unit, list:'units',
+          'aria-label':t('Unit for {x}',{x:row.name}), oninput:e=>{ row.unit=e.target.value; }}),
+        name,
+        el('button',{class:'x', type:'button','aria-label':t('Remove {x}',{x:row.name}),
+          onclick:()=>{ d.rows.splice(idx,1); if(fixing===idx) fixing=-1; else if(fixing>idx) fixing--; paintIngs(); }},'×'));
+    }));
   };
   paintIngs();
   const picker=itemPicker(t('Add ingredient…'), name=>{
@@ -1237,11 +1515,13 @@ function renderForm(){
 
   fill(app,
     backBar(t(editing?'Edit recipe':'New recipe')),
+    banner,
     el('div',{class:'form'+(editing?' editing':'')},
       el('label',{}, t('Title'), el('input',{type:'text', value:d.title, placeholder:t('Gemista'),
         autocapitalize:'sentences', oninput:e=>{ d.title=e.target.value; }})),
       el('label',{}, t('Serves'), stepper(d.servings, v=>{ d.servings=v; }, null, 1, 99)),
-      el('label',{}, t('Time'), el('div',{class:'quick'}, [15,30,45,60,90].map(m=>{
+      el('label',{}, t('Time'), el('div',{class:'quick'}, [15,30,45,60,90].concat(
+        d.minutes && [15,30,45,60,90].indexOf(d.minutes)<0 ? [d.minutes] : []).sort((a,b)=>a-b).map(m=>{
         const b=el('button',{type:'button', class:d.minutes===m?'on':'', onclick:()=>{
           d.minutes=d.minutes===m?null:m;
           [...b.parentNode.children].forEach(x=>x.classList.toggle('on', +x.dataset.m===d.minutes));
@@ -1559,7 +1839,7 @@ function renderReset(tok){
 function tabbar(){
   const n=S.ready ? shopList().reduce((t,g)=>t+g.rows.length,0) : 0;
   const tab=(id,label,badge)=>el('button',{class:S.view===id&&!S.recipe?'on':'',
-    onclick:()=>{ S.view=id; S.recipe=null; S.draft=null; S.organise=false; render(); }},
+    onclick:()=>{ S.view=id; S.recipe=null; S.draft=null; S.organise=false; S.importer=null; render(); }},
     label, badge?el('span',{class:'dot'}, badge):null);
   return el('div',{class:'tabbar'},
     tab('recipes',t('Recipes')), tab('plan',t('Plan'), S.basket.length||null),
@@ -1568,6 +1848,7 @@ function tabbar(){
 function render(){
   if(S.tour!=null) return renderTour();
   if(S.cook) return renderCook();
+  if(S.importer) return renderImport();
   if(S.draft) return renderForm();
   if(S.recipe && S.recipe!=='new') return renderRecipe();
   if(S.view==='plan') return renderPlan();
@@ -1595,14 +1876,14 @@ async function boot(){
 document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState!=='visible' || !S.ready) return;
   if(S.cook){ holdScreen(); return; }              /* wake locks die on hide */
-  if(S.draft) return;
+  if(S.draft || S.importer) return;
   loadAll().then(render).catch(()=>{});
 });
 /* Everything cached for the account that just went away. Signing in as someone
    else must not show a frame of the previous person's recipes. */
 function resetData(){
   S.ready=false; S.recipes=[]; S.ings=[]; S.items=[]; S.basket=[]; S.extras=[];
-  S.recipe=null; S.servings=null; S.draft=null; S.cook=null; S.tour=null; S.organise=false; S.view='recipes'; S.aisles=[];
+  S.recipe=null; S.servings=null; S.draft=null; S.cook=null; S.tour=null; S.organise=false; S.importer=null; S.view='recipes'; S.aisles=[];
 }
 /* Signing in or out in one app lands in the other two straight away, instead of
    surfacing later as a confusing 401. Token rotation writes this key too, so
