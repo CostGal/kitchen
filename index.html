@@ -238,6 +238,27 @@
   .shop.done .box{border-color:var(--ok); background:var(--ok); color:#0E120A}
   .shop.done .nm{color:var(--ink2); text-decoration:line-through}
   .shop.done .q{color:var(--ink2); text-decoration:line-through}
+  /* "already have" sheet — same bones as the listening sheet */
+  .pop{position:fixed; inset:0; z-index:55; display:flex; flex-direction:column; justify-content:flex-end;
+    background:rgba(0,0,0,.72); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); animation:lfade .18s ease-out}
+  .pop.out{animation:lfade .18s ease-in reverse forwards}
+  .pop .sheet{width:100%; max-width:560px; max-height:88vh; margin:0 auto; display:flex; flex-direction:column;
+    padding:22px calc(env(safe-area-inset-right) + 18px) calc(env(safe-area-inset-bottom) + 16px) calc(env(safe-area-inset-left) + 18px);
+    background:var(--card); border:1px solid var(--rule); border-bottom:0; border-radius:22px 22px 0 0;
+    animation:lrise .3s cubic-bezier(.2,.9,.3,1.1)}
+  .pop.out .sheet{animation:lrise .18s ease-in reverse forwards}
+  .havelist{flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; margin-bottom:14px}
+  .have{display:flex; align-items:center; gap:12px; width:100%; min-width:0; text-align:left; min-height:50px;
+    padding:8px 2px; background:none; border:0; border-bottom:1px solid var(--rule)}
+  .have .box{flex:none; width:24px; height:24px; border-radius:7px; border:1.5px solid var(--rule);
+    display:flex; align-items:center; justify-content:center; font-size:13px; color:transparent}
+  .have .nm{flex:1; min-width:0; font-size:15.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .have .q{flex:none; font-size:14px; color:var(--ink2)}
+  .have.on .box{background:var(--acc); border-color:var(--acc); color:#100E0D}
+  .have.on .nm{color:var(--ink2)}
+  .card .cardfoot{flex-basis:100%; padding-left:70px; margin-top:-2px}
+  .havebtn{flex:none; min-height:40px; padding:0 11px; font-size:13px; color:var(--acc); background:none;
+    border:1px solid var(--acc-line); border-radius:10px; white-space:nowrap}
   /* organise mode */
   .org{margin-bottom:18px}
   .orghead{display:flex; align-items:center; gap:6px; padding-bottom:8px; border-bottom:1px solid var(--rule)}
@@ -378,6 +399,10 @@ const EL={
   'Send link':'Αποστολή link','Sign in':'Σύνδεση','Back to sign in':'Πίσω στη σύνδεση','Forgot password?':'Ξέχασες τον κωδικό;',
   'New password':'Νέος κωδικός','Try again':'Δοκίμασε ξανά',
   'Say an ingredient':'Πες ένα υλικό','Microphone access is off for this site.':'Το μικρόφωνο είναι κλειστό για αυτή τη σελίδα.','Didn’t catch that.':'Δεν το έπιασα.',
+  'Already have any of these?':'Έχεις ήδη κάποια από αυτά;','{n} ticked':'{n} επιλεγμένα',
+  'Tick what’s already at home and it stays off this week’s shopping list for {x}.':'Σημείωσε ό,τι έχεις ήδη στο σπίτι και δε θα μπει στη λίστα για ψώνια της εβδομάδας για: {x}.',
+  '{n} thing left off the list':'{n} πράγμα έμεινε εκτός λίστας','{n} things left off the list':'{n} πράγματα έμειναν εκτός λίστας',
+  'Already have {n}':'Έχω ήδη {n}','Already have some?':'Έχεις ήδη κάποια;',
   'Import':'Εισαγωγή','Import a recipe':'Εισαγωγή συνταγής','From a link':'Από link','Or paste it':'Ή επικόλλησέ τη',
   'Read the recipe':'Διάβασε τη συνταγή','Use this text':'Χρησιμοποίησε αυτό το κείμενο','Reading the page…':'Διαβάζω τη σελίδα…',
   'Nothing is saved until you press Save — the recipe opens in the form first so you can check it. Ingredients Kitchen doesn’t know yet are marked new.':'Τίποτα δεν αποθηκεύεται πριν πατήσεις Αποθήκευση — η συνταγή ανοίγει πρώτα στη φόρμα για να την ελέγξεις. Τα υλικά που δεν ξέρει ακόμα το Kitchen σημειώνονται ως νέα.',
@@ -800,7 +825,9 @@ function shopList(withEmpty){
   for(const b of S.basket){
     const r=recipeById(b.recipe_id); if(!r) continue;
     const factor=(b.servings||r.servings)/(r.servings||1);
+    const have=new Set((b.have||[]).map(norm));
     for(const ing of ingsOf(r.id)){
+      if(have.has(norm(ing.name))) continue;         /* already at home */
       const L=line(ing.name, null, ing.name_el);
       addQty(L, ing.qty==null?null:ing.qty*factor, ing.unit);
       if(L.from.indexOf(r.title)<0) L.from.push(r.title);
@@ -916,6 +943,12 @@ async function setBasket(recipeId, servings){
     else{ const r=await api('mp_basket',{method:'POST', body:{recipe_id:recipeId, servings:servings}, headers:REP.headers});
       if(r[0]) S.basket.push(r[0]); }
   } finally{ busy(false); }
+}
+async function setHave(recipeId, list){
+  busy(true);
+  try{ const r=await api('mp_basket?recipe_id=eq.'+recipeId,{method:'PATCH', body:{have:list}, headers:REP.headers});
+    if(r[0]) S.basket=S.basket.map(b=>b.recipe_id===recipeId?r[0]:b); }
+  finally{ busy(false); }
 }
 async function addExtra(name, qty, unit){
   busy(true);
@@ -1072,6 +1105,46 @@ function voiceButton(onHeard){
   return btn;
 }
 
+/* ---------- "already have any of these?" ----------
+   Shown right after a recipe goes into the plan — after, not before, so the +
+   on a card is still one tap and this is only ever a skippable follow-up.
+   What you tick is stored on the plan entry (mp_basket.have) and those lines
+   stay off this week's list; take the recipe out of the plan and it's gone. */
+function haveSheet(r){
+  const b=inBasket(r.id), rows=ingsOf(r.id);
+  if(!b || !rows.length) return;
+  const have=new Set((b.have||[]).map(norm)), was=[...have].sort().join('|');
+  const factor=b.servings/(r.servings||1), seen=new Set();
+  const count=el('span',{class:'sub'});
+  const paintCount=()=>fill(count, have.size ? tn(have.size,'{n} ticked','{n} ticked') : '');
+  const list=rows.filter(i=>{ const k=norm(i.name); if(seen.has(k)) return false; seen.add(k); return true; }).map(i=>{
+    const k=norm(i.name), box=el('span',{class:'box'}); box.append(icon('check'));
+    const btn=el('button',{type:'button', class:'have'+(have.has(k)?' on':''), 'aria-pressed':String(have.has(k)),
+      onclick:()=>{ if(have.has(k)) have.delete(k); else have.add(k);
+        btn.classList.toggle('on', have.has(k)); btn.setAttribute('aria-pressed', String(have.has(k))); paintCount(); }},
+      box, el('span',{class:'nm'}, dn(i)),
+      i.qty==null ? null : el('span',{class:'q'}, num(i.qty*factor)+(i.unit?' '+ul(i.unit):'')));
+    return btn;
+  });
+  const close=()=>{ document.removeEventListener('keydown', onKey); ui.classList.add('out'); setTimeout(()=>ui.remove(), 190); };
+  const done=async()=>{
+    close();
+    if([...have].sort().join('|')===was) return;
+    try{ await setHave(r.id, [...have]); render(); if(have.size) toast(tn(have.size,'{n} thing left off the list','{n} things left off the list'), true); }
+    catch(e){ toast(e.message); }
+  };
+  const onKey=e=>{ if(e.key==='Escape') done(); };
+  const ui=el('div',{class:'pop', role:'dialog', 'aria-modal':'true', 'aria-label':t('Already have any of these?')},
+    el('div',{class:'sheet'},
+      el('div',{class:'head'}, el('h2',{}, t('Already have any of these?')), count),
+      el('p',{class:'mut', style:'margin:-4px 0 12px'}, t('Tick what’s already at home and it stays off this week’s shopping list for {x}.',{x:r.title})),
+      el('div',{class:'havelist'}, list),
+      el('div',{class:'btnrow'}, el('button',{type:'button', class:'pri', onclick:done}, t('Done')))));
+  ui.onclick=e=>{ if(e.target===ui) done(); };
+  document.addEventListener('keydown', onKey);
+  paintCount(); document.body.append(ui);
+}
+
 /* ---------- recipes tab ---------- */
 function renderRecipes(){
   const app=document.getElementById('app');
@@ -1096,7 +1169,7 @@ function recipeCard(r){
     el('span',{class:'txt'}, el('b',{}, r.title), el('small',{}, bits.join(' · '))));
   const add=el('button',{class:'add'+(b?' on':''), 'aria-label':t(b?'Remove from plan':'Add to plan'),
     onclick:async e=>{ e.stopPropagation();
-      try{ await setBasket(r.id, b?null:r.servings); render(); }catch(err){ toast(err.message); } }});
+      try{ await setBasket(r.id, b?null:r.servings); render(); if(!b) haveSheet(r); }catch(err){ toast(err.message); } }});
   add.append(b?icon('check'):document.createTextNode('+'));
   card.append(add);
   return card;
@@ -1127,7 +1200,7 @@ function renderRecipe(){
   };
   cta.className=b?'':'pri';
   cta.onclick=async()=>{
-    try{ await setBasket(r.id, b?null:serv); render(); if(!b) toast(t('Added to the plan'), true); }
+    try{ await setBasket(r.id, b?null:serv); render(); if(!b){ toast(t('Added to the plan'), true); haveSheet(r); } }
     catch(e){ toast(e.message); }
   };
 
@@ -1589,7 +1662,9 @@ function renderPlan(){
           onclick:()=>{ S.recipe=r.id; S.servings=b.servings; render(); }},
           el('b',{}, r.title), el('small',{}, tn(b.servings,'{n} serving','{n} servings'))),
         el('div',{style:'flex:none;width:126px'},
-          stepper(b.servings, async v=>{ try{ await setBasket(r.id, v); renderShopCount(); }catch(e){ toast(e.message); } }, null, 1, 99))
+          stepper(b.servings, async v=>{ try{ await setBasket(r.id, v); renderShopCount(); }catch(e){ toast(e.message); } }, null, 1, 99)),
+        ingsOf(r.id).length ? el('div',{class:'cardfoot'}, el('button',{type:'button', class:'havebtn', onclick:()=>haveSheet(r)},
+          (b.have||[]).length ? tn(b.have.length,'Already have {n}','Already have {n}') : t('Already have some?'))) : null
       )))
     ) : el('div',{class:'empty'}, t('Nothing planned. Go to '), el('b',{style:'color:var(--acc)'}, t('Recipes')),
         t(' and tap + on whatever you fancy this week — the shopping list builds itself.')),

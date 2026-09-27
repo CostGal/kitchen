@@ -64,7 +64,9 @@ migration `kitchen_app_schema`). Schema changes: apply via the Supabase MCP
   deleting a catalogue entry must never blank an ingredient in a saved recipe.
 - `mp_basket` — what you've decided to cook. Primary key `(user_id, recipe_id)`,
   so adding the same recipe twice is idempotent. `servings` is what you want
-  this week, which may differ from the recipe's base.
+  this week, which may differ from the recipe's base. `have text[]` holds the
+  `lower(name)`s of that recipe's ingredients you already have at home
+  (`haveSheet`); they stay off the list, and go when the entry does.
 - `mp_extras` — things no recipe asked for (bin bags, coffee). This *is* the
   "manually added line" on the Shop tab — there is no second kind.
 - `mp_aisles` — your shop categories: `key`, `name` (null = the built-in label,
@@ -138,7 +140,9 @@ This repo is **public** (required for free GitHub Pages). So:
 
 ## How the shopping list is computed (`shopList`)
 
-1. Each basket recipe is scaled by `basket.servings / recipe.servings`.
+1. Each basket recipe is scaled by `basket.servings / recipe.servings`, and
+   any ingredient in that entry's `have` is skipped — per recipe, so having
+   the oil for one dish doesn't take it off another's.
 2. Ingredient lines are merged by `lower(name)` across every recipe.
 3. Quantities are summed **per unit family**. Only mass (`g`/`kg`) and volume
    (`ml`/`l`) convert — see `FAM`. Everything else (tbsp, cloves, tins,
@@ -301,7 +305,9 @@ Deliberately left out of v1, in rough order of what's worth doing next:
 - **Dates.** The plan is a basket, not a calendar — "what am I cooking this
   week", not "Tuesday dinner". Adding days means a `date` on `mp_basket` and a
   week grid; the shopping list maths doesn't change.
-- **Pantry stock** ("I already have rice"), which would subtract from the list.
+- **Standing pantry stock** — a remembered "always have salt" that applies to
+  every recipe. What exists is per plan entry (`haveSheet`, asked right after
+  adding — never before, so the card's + stays one tap).
 - **An LLM pass over imports**, for pages with no structured data. It would
   go in an Edge Function with the key as a secret, per the privacy invariants
   above.

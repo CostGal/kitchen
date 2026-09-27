@@ -53,6 +53,9 @@ create table mp_basket (
   user_id   uuid not null default auth.uid() references auth.users(id) on delete cascade,
   recipe_id uuid not null references mp_recipes(id) on delete cascade,
   servings  int  not null default 2 check (servings between 1 and 99),
+  -- lower(name)s of this recipe's ingredients you already have at home; they
+  -- stay off this week's shopping list (migration kitchen_basket_have).
+  have      text[] not null default '{}',
   added_at  timestamptz not null default now(),
   primary key (user_id, recipe_id)
 );
