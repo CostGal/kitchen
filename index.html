@@ -231,6 +231,15 @@
   .shop.done .box{border-color:var(--ok); background:var(--ok); color:#0E120A}
   .shop.done .nm{color:var(--ink2); text-decoration:line-through}
   .shop.done .q{color:var(--ink2); text-decoration:line-through}
+  /* organise mode */
+  .org{margin-bottom:18px}
+  .orghead{display:flex; align-items:center; gap:6px; padding-bottom:8px; border-bottom:1px solid var(--rule)}
+  .orghead .aname{flex:1; min-width:0; padding:9px 10px; background:none; font-size:14px; letter-spacing:.12em; text-transform:uppercase}
+  .orghead .aname:disabled{border-color:transparent; color:var(--ink2)}
+  .orghead .mv{flex:none; width:44px; height:44px; font-size:17px; color:var(--ink2); background:var(--card2); border:1px solid var(--rule); border-radius:10px}
+  .orghead .mv:disabled{opacity:.3}
+  .orghead .mv.del{color:var(--bad); border-color:#4A2325}
+  .org .row .asel{flex:none; width:140px; padding:8px 6px; font-size:13px}
 
   /* --- cook mode: one step, big, screen held awake --- */
   .cook{position:fixed; inset:0; z-index:50; background:var(--bg); display:flex; flex-direction:column;
@@ -373,6 +382,10 @@ const EL={
   'Every planned recipe merged into one list, in the order you walk the shop. Tap a line to tick it off; add anything else at the top.':'Όλες οι συνταγές του πλάνου σε μία λίστα, με τη σειρά που περπατάς στο μαγαζί. Πάτα μια γραμμή για να τη σημειώσεις· ό,τι άλλο θες, το γράφεις από πάνω.',
   'Open a recipe and tap Cook for one step at a time, big enough to read from the hob. The screen stays awake.':'Άνοιξε μια συνταγή και πάτα Μαγείρεμα για ένα βήμα τη φορά, με γράμματα που διαβάζονται από την κουζίνα. Η οθόνη μένει αναμμένη.',
   'Fruit & veg':'Μανάβικο','Bakery':'Φούρνος','Meat':'Κρέας','Fish':'Ψάρι','Dairy & eggs':'Γαλακτοκομικά',
+  'Organise':'Οργάνωση','always last':'πάντα τελευταίο','Name of {x}':'Όνομα για {x}','Move {x} up':'Πάνω: {x}','Move {x} down':'Κάτω: {x}','Delete {x}':'Διαγραφή: {x}',
+  'Delete “{x}”? Anything in it moves to Other.':'Διαγραφή «{x}»; Ό,τι έχει μέσα πάει στα Άλλα.','Category for {x}':'Κατηγορία για {x}',
+  'New category…':'Νέα κατηγορία…','Add':'Προσθήκη','“{v}” is already a category.':'Το «{v}» υπάρχει ήδη ως κατηγορία.',
+  'Put the categories in the order you walk your shop, and move anything that landed in the wrong one. Moves stick — the item keeps its category next time.':'Βάλε τις κατηγορίες με τη σειρά που περπατάς στο μαγαζί σου και μετακίνησε ό,τι μπήκε σε λάθος. Οι αλλαγές μένουν — το υλικό κρατά την κατηγορία του και την επόμενη φορά.',
   'Pantry':'Ντουλάπι','Frozen':'Κατεψυγμένα','Drinks':'Ποτά','Household':'Σπίτι','Other':'Άλλα'
 };
 function t(s, v){
@@ -402,6 +415,7 @@ const ICONS={
   users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 20v-2a4 4 0 00-3-3.87"/></svg>',
   check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg>',
   mic  :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',
+  sort :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M4 12h7M4 18h4M17 4v16M14 17l3 3 3-3"/></svg>',
   pot  :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18M4.5 9v8a3 3 0 003 3h9a3 3 0 003-3V9"/><path d="M8 6V3M16 6V3M12 6V4"/></svg>'
 };
 function icon(n){ const s=el('span',{class:'ico'}); s.innerHTML=ICONS[n]||''; return s; }
@@ -546,6 +560,56 @@ const AISLES=[['produce','Fruit & veg'],['bakery','Bakery'],['meat','Meat'],['fi
   ['dairy','Dairy & eggs'],['pantry','Pantry'],['frozen','Frozen'],['drinks','Drinks'],
   ['household','Household'],['other','Other']];
 const AISLE_NAME=Object.fromEntries(AISLES);
+/* Your categories, in your shop's order. AISLES is only the starting point:
+   until you change something there are no mp_aisles rows and this is the
+   built-in walk. "other" always exists and always comes last — it's where
+   anything with an unknown or deleted category lands. */
+function aisles(){
+  const list=S.aisles.length
+    ? S.aisles.slice().sort((a,b)=>a.pos-b.pos).map(a=>({key:a.key, name:a.name}))
+    : AISLES.map(([k])=>({key:k, name:null}));
+  const rest=list.filter(a=>a.key!=='other');
+  return rest.concat([list.find(a=>a.key==='other')||{key:'other', name:null}]);
+}
+function aisleLabel(key){
+  const a=aisles().find(x=>x.key===key);
+  return (a && a.name) || (AISLE_NAME[key] ? t(AISLE_NAME[key]) : t('Other'));
+}
+function aisleOf(key){ return aisles().some(a=>a.key===key) ? key : 'other'; }
+/* Every edit writes the whole list back — it's a dozen rows, and it means the
+   first edit on a fresh account materialises the built-in walk in one go. */
+async function saveAisles(list){
+  busy(true);
+  try{
+    const rows=list.map((a,i)=>({key:a.key, name:a.name||null, pos:i}));
+    S.aisles=await api('mp_aisles?on_conflict=user_id,key',{method:'POST', body:rows,
+      headers:{Prefer:'return=representation,resolution=merge-duplicates'}});
+  } finally{ busy(false); }
+}
+async function deleteAisle(key){
+  if(key==='other') return;
+  busy(true);
+  try{
+    /* Items and extras in it fall back to Other rather than vanishing. */
+    await api('mp_items?aisle=eq.'+encodeURIComponent(key),{method:'PATCH', body:{aisle:'other'}});
+    await api('mp_extras?aisle=eq.'+encodeURIComponent(key),{method:'PATCH', body:{aisle:'other'}});
+    S.items.forEach(i=>{ if(i.aisle===key) i.aisle='other'; });
+    S.extras.forEach(x=>{ if(x.aisle===key) x.aisle='other'; });
+    await saveAisles(aisles().filter(a=>a.key!==key));
+    await api('mp_aisles?key=eq.'+encodeURIComponent(key),{method:'DELETE'});
+    S.aisles=S.aisles.filter(a=>a.key!==key);
+  } finally{ busy(false); }
+}
+/* Moving a line moves the catalogue item, so it stays moved next week too. */
+async function moveToAisle(name, key){
+  busy(true);
+  try{
+    const it=itemByName(name);
+    if(it){ await api('mp_items?id=eq.'+it.id,{method:'PATCH', body:{aisle:key}}); it.aisle=key; }
+    for(const x of S.extras.filter(x=>norm(x.name)===norm(name))){
+      await api('mp_extras?id=eq.'+x.id,{method:'PATCH', body:{aisle:key}}); x.aisle=key; }
+  } finally{ busy(false); }
+}
 /* Only mass and volume convert. Everything else (tbsp, cloves, tins, bunches)
    is summed per exact unit and shown side by side — "2 cloves + 1 tbsp" is
    honest, whereas inventing a conversion between them is not. */
@@ -583,18 +647,19 @@ function fmtAmount(qty, unit){
    every calculation runs in memory. Mutate S, then render().
    S.draft holds the half-finished recipe form for the same reason Overtime's
    does: a background refetch must not throw away what you were typing. */
-const S={view:'recipes', recipes:[], ings:[], items:[], basket:[], extras:[],
-         recipe:null, servings:null, draft:null, cook:null, tour:null, wake:null, ready:false};
+const S={view:'recipes', recipes:[], ings:[], items:[], basket:[], extras:[], aisles:[],
+         recipe:null, servings:null, draft:null, cook:null, tour:null, wake:null, organise:false, ready:false};
 
 async function loadAll(){
-  const [items, recipes, ings, basket, extras]=await Promise.all([
+  const [items, recipes, ings, basket, extras, aisleRows]=await Promise.all([
     api('mp_items?select=*&order=name.asc'),
     api('mp_recipes?select=*&order=created_at.desc'),
     api('mp_recipe_items?select=*&order=pos.asc'),
     api('mp_basket?select=*'),
-    api('mp_extras?select=*&order=created_at.asc')
+    api('mp_extras?select=*&order=created_at.asc'),
+    api('mp_aisles?select=*&order=pos.asc')
   ]);
-  S.items=items; S.recipes=recipes; S.ings=ings; S.basket=basket; S.extras=extras;
+  S.items=items; S.recipes=recipes; S.ings=ings; S.basket=basket; S.extras=extras; S.aisles=aisleRows;
   if(!S.items.length) await seedItems();
 }
 
@@ -696,7 +761,7 @@ function suggest(q, limit){
 /* Every basket recipe scaled to the servings you chose, merged by ingredient
    name, then grouped into aisles. Ingredients with no quantity ("salt", "olive
    oil") still appear — you just don't get a number. */
-function shopList(){
+function shopList(withEmpty){
   const map=new Map();
   function line(name, aisle, el){
     const k=norm(name);
@@ -724,9 +789,10 @@ function shopList(){
     L.extra=x;
   }
   const groups=[];
-  for(const [id,label] of AISLES){
-    const rows=[...map.values()].filter(l=>l.aisle===id).sort((a,b)=>bare(dn(a))<bare(dn(b))?-1:1);
-    if(rows.length) groups.push({id:id, label:t(label), rows:rows});
+  const all=[...map.values()];
+  for(const a of aisles()){
+    const rows=all.filter(l=>aisleOf(l.aisle)===a.key).sort((x,y)=>bare(dn(x))<bare(dn(y))?-1:1);
+    if(rows.length || withEmpty) groups.push({id:a.key, label:aisleLabel(a.key), rows:rows});
   }
   return groups;
 }
@@ -874,7 +940,7 @@ function itemPicker(placeholder, onPick){
     const q=input.value, list=suggest(q), exact=q.trim() && itemByName(q);
     const kids=list.map(i=>{ const other=LANG==='el'?(i.name_el?i.name:null):i.name_el;
       return el('button',{type:'button', onmousedown:e=>e.preventDefault(), onclick:()=>take(i.name)},
-        el('span',{class:'nm'}, dn(i), other?el('small',{}, ' · '+other):null), el('span',{class:'al'}, t(AISLE_NAME[i.aisle]||'Other'))); });
+        el('span',{class:'nm'}, dn(i), other?el('small',{}, ' · '+other):null), el('span',{class:'al'}, aisleLabel(i.aisle))); });
     if(q.trim() && !exact) kids.push(el('button',{class:'new', type:'button', onmousedown:e=>e.preventDefault(), onclick:()=>take(q.trim())},
       el('span',{class:'nm'}, t('Add “{x}”',{x:q.trim()})), el('span',{class:'al'}, t('New'))));
     if(!kids.length){ close(); return; }
@@ -1259,6 +1325,7 @@ function renderShopCount(){
 
 /* ---------- shop tab ---------- */
 function renderShop(){
+  if(S.organise) return renderOrganise();
   const groups=shopList(), done=checked();
   const total=groups.reduce((n,g)=>n+g.rows.length,0);
   const left=groups.reduce((n,g)=>n+g.rows.filter(r=>!done.has(r.key)).length,0);
@@ -1303,12 +1370,70 @@ function renderShop(){
   fill(app,
     topbar(t('Shop'), [
       el('span',{class:'sub', id:'shopcount', style:'font-size:13px;color:var(--ink2)'}, t('{n} left',{n:left})),
-      total ? el('button',{onclick:()=>{ setChecked(new Set()); render(); }}, t('Reset')) : null
+      total ? el('button',{onclick:()=>{ setChecked(new Set()); render(); }}, t('Reset')) : null,
+      el('button',{class:'ico-only', 'aria-label':t('Organise'), title:t('Organise'), onclick:()=>{ S.organise=true; render(); }}, icon('sort'))
     ]),
     adder,
     total ? el('div',{style:'margin-top:22px'}, list)
           : el('div',{class:'empty'}, t('Nothing to buy. Add recipes to the '), el('b',{style:'color:var(--acc)'}, t('Plan')),
               t(', or type anything you need into the box above.')),
+    tabbar());
+}
+
+/* Organise is the Shop tab's other face: the categories in your shop's walk
+   order — rename, move up/down, add, delete — and every line currently on the
+   list with a picker to send it to another category. Separate from the tick
+   list on purpose: a stray tap mid-shop must never move the milk. */
+function renderOrganise(){
+  const groups=shopList(true), list=aisles();
+  const app=document.getElementById('app');
+  const run=fn=>async()=>{ try{ await fn(); render(); }catch(e){ toast(e.message); } };
+  const move=(i,n)=>run(()=>{ const l=list.slice(); const [a]=l.splice(i,1); l.splice(i+n,0,a); return saveAisles(l); });
+
+  const body=groups.map((g,i)=>{
+    const last=list.length-1, isOther=g.id==='other';
+    const nameIn=el('input',{type:'text', class:'aname', value:aisleLabel(g.id), autocapitalize:'sentences',
+      'aria-label':t('Name of {x}',{x:aisleLabel(g.id)}), disabled:isOther,
+      onchange:run(async()=>{
+        const v=nameIn.value.trim();
+        const builtin=AISLE_NAME[g.id] ? t(AISLE_NAME[g.id]) : null;
+        const name=!v || v===builtin ? null : v;
+        await saveAisles(list.map(a=>a.key===g.id?{key:a.key, name:name}:a));
+      })});
+    return el('div',{class:'org'},
+      el('div',{class:'orghead'},
+        nameIn,
+        isOther ? el('span',{class:'mut', style:'flex:none'}, t('always last')) : [
+          el('button',{type:'button', class:'mv', disabled:i===0, 'aria-label':t('Move {x} up',{x:aisleLabel(g.id)}), onclick:move(i,-1)},'↑'),
+          el('button',{type:'button', class:'mv', disabled:i>=last-1, 'aria-label':t('Move {x} down',{x:aisleLabel(g.id)}), onclick:move(i,1)},'↓'),
+          el('button',{type:'button', class:'mv del', 'aria-label':t('Delete {x}',{x:aisleLabel(g.id)}), onclick:()=>{
+            if(!confirm(t('Delete “{x}”? Anything in it moves to Other.',{x:aisleLabel(g.id)}))) return;
+            run(()=>deleteAisle(g.id))(); }},'×')]),
+      g.rows.map(L=>el('div',{class:'row'},
+        el('span',{class:'nm'}, dn(L)),
+        el('select',{class:'asel', 'aria-label':t('Category for {x}',{x:dn(L)}),
+          onchange:e=>run(()=>moveToAisle(L.name, e.target.value))()},
+          list.map(a=>el('option',{value:a.key, selected:a.key===g.id?'':null}, aisleLabel(a.key)))))));
+  });
+
+  const newIn=el('input',{type:'text', placeholder:t('New category…'), autocapitalize:'sentences', enterkeyhint:'done'});
+  const add=run(async()=>{
+    const v=newIn.value.trim(); if(!v) return;
+    if(list.some(a=>norm(aisleLabel(a.key))===norm(v))) throw new Error(t('“{v}” is already a category.',{v:v}));
+    const key='c'+Date.now().toString(36);
+    /* New categories go just above Other — the usual spot for "the bit near
+       the tills" is somewhere you'll then move it with the arrows anyway. */
+    await saveAisles(list.slice(0,-1).concat([{key:key, name:v}], list.slice(-1)));
+  });
+  newIn.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); add(); } };
+
+  fill(app,
+    topbar(t('Organise'), el('button',{class:'pri', onclick:()=>{ S.organise=false; render(); }}, t('Done'))),
+    el('p',{class:'mut', style:'margin:0 0 18px'},
+      t('Put the categories in the order you walk your shop, and move anything that landed in the wrong one. Moves stick — the item keeps its category next time.')),
+    body,
+    el('div',{class:'org'}, el('div',{class:'orghead'}, newIn,
+      el('button',{type:'button', class:'mv', style:'width:auto;padding:0 14px;color:var(--acc)', onclick:add}, t('Add')))),
     tabbar());
 }
 
@@ -1355,7 +1480,7 @@ function renderSettings(){
           onchange:async e=>{ const a=e.target.value;
             try{ busy(true); await api('mp_items?id=eq.'+it.id,{method:'PATCH', body:{aisle:a}}); it.aisle=a; }
             catch(err){ toast(err.message); } finally{ busy(false); } }},
-          AISLES.map(([id,label])=>el('option',{value:id, selected:it.aisle===id?'':null}, t(label))))
+          aisles().map(a=>el('option',{value:a.key, selected:aisleOf(it.aisle)===a.key?'':null}, aisleLabel(a.key))))
       )))),
     appSwitcher(),
     el('section',{},
@@ -1434,7 +1559,7 @@ function renderReset(tok){
 function tabbar(){
   const n=S.ready ? shopList().reduce((t,g)=>t+g.rows.length,0) : 0;
   const tab=(id,label,badge)=>el('button',{class:S.view===id&&!S.recipe?'on':'',
-    onclick:()=>{ S.view=id; S.recipe=null; S.draft=null; render(); }},
+    onclick:()=>{ S.view=id; S.recipe=null; S.draft=null; S.organise=false; render(); }},
     label, badge?el('span',{class:'dot'}, badge):null);
   return el('div',{class:'tabbar'},
     tab('recipes',t('Recipes')), tab('plan',t('Plan'), S.basket.length||null),
@@ -1477,7 +1602,7 @@ document.addEventListener('visibilitychange', ()=>{
    else must not show a frame of the previous person's recipes. */
 function resetData(){
   S.ready=false; S.recipes=[]; S.ings=[]; S.items=[]; S.basket=[]; S.extras=[];
-  S.recipe=null; S.servings=null; S.draft=null; S.cook=null; S.tour=null; S.view='recipes';
+  S.recipe=null; S.servings=null; S.draft=null; S.cook=null; S.tour=null; S.organise=false; S.view='recipes'; S.aisles=[];
 }
 /* Signing in or out in one app lands in the other two straight away, instead of
    surfacing later as a confusing 401. Token rotation writes this key too, so

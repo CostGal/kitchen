@@ -69,6 +69,20 @@ create table mp_extras (
 );
 create index mp_extras_user on mp_extras (user_id, created_at);
 
+-- Your own shop categories (migration kitchen_aisles). No rows = the built-in
+-- walk in index.html's AISLES. The first edit writes the whole list, so from
+-- then on this table is the order. key is what mp_items.aisle / mp_extras.aisle
+-- hold; name null means "the built-in label, translated".
+create table mp_aisles (
+  user_id    uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  key        text not null check (length(btrim(key)) > 0),
+  name       text check (name is null or length(btrim(name)) > 0),
+  pos        int  not null default 0,
+  created_at timestamptz not null default now(),
+  primary key (user_id, key)
+);
+
+alter table mp_aisles       enable row level security;
 alter table mp_items        enable row level security;
 alter table mp_recipes      enable row level security;
 alter table mp_recipe_items enable row level security;
@@ -80,3 +94,4 @@ create policy mp_recipes_own      on mp_recipes      for all using (user_id = au
 create policy mp_recipe_items_own on mp_recipe_items for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy mp_basket_own       on mp_basket       for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy mp_extras_own       on mp_extras       for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+create policy mp_aisles_own       on mp_aisles       for all using (user_id = auth.uid()) with check (user_id = auth.uid());

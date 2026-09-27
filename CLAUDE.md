@@ -65,7 +65,14 @@ migration `kitchen_app_schema`). Schema changes: apply via the Supabase MCP
 - `mp_basket` — what you've decided to cook. Primary key `(user_id, recipe_id)`,
   so adding the same recipe twice is idempotent. `servings` is what you want
   this week, which may differ from the recipe's base.
-- `mp_extras` — things no recipe asked for (bin bags, coffee).
+- `mp_extras` — things no recipe asked for (bin bags, coffee). This *is* the
+  "manually added line" on the Shop tab — there is no second kind.
+- `mp_aisles` — your shop categories: `key`, `name` (null = the built-in label,
+  translated), `pos`. **No rows means the built-in `AISLES` walk.** Every edit
+  upserts the whole list (`saveAisles`), so the first edit materialises it.
+  `mp_items.aisle` / `mp_extras.aisle` hold the `key`; an unknown key reads as
+  `other`, which always exists and is always last. Deleting a category moves
+  its items to `other` first.
 
 RLS on every `mp_*` table: `user_id = auth.uid()`. The publishable key in the
 HTML is meant to be public. Nothing here is reachable by `anon`.
@@ -140,8 +147,9 @@ This repo is **public** (required for free GitHub Pages). So:
    one, and a wrong number on a shopping list is worse than two right ones.
 4. Ingredients with no quantity ("salt", "olive oil") still appear, without a
    number.
-5. Lines are grouped into `AISLES`, whose order is the walk through the shop,
-   not the alphabet.
+5. Lines are grouped by `aisles()` — your `mp_aisles` order, or `AISLES` if
+   you've never changed it. The order is the walk through the shop, not the
+   alphabet.
 
 Ticked-off state lives in `localStorage` (`kitchen_checked`), not the database —
 it's per-shop and disposable, and a table would cost a round trip per tap.
@@ -168,7 +176,11 @@ Mirrors Ledger's and Overtime's conventions:
   Session in `localStorage` under the **shared** key — see below.
 - Views: `renderRecipes` (cards, with a +/✓ that adds to the plan without
   opening the recipe), `renderRecipe` (detail, ingredients scaled by a servings
-  stepper), `renderForm` (add/edit), `renderPlan`, `renderShop`,
+  stepper), `renderForm` (add/edit), `renderPlan`, `renderShop` (with
+  `renderOrganise` behind its sort icon: rename/reorder/add/delete categories
+  and move any line to another category — separate from the tick list so a
+  stray tap mid-shop never moves the milk; a move patches the `mp_items` row so
+  it sticks),
   `renderSettings` (ingredient catalogue + aisles, `appSwitcher()`, sign out),
   `renderCook`.
 - `appSwitcher()` is the door to the sibling apps — plain `<a href="../ledger/">`
@@ -187,7 +199,11 @@ Mirrors Ledger's and Overtime's conventions:
 - `voiceButton` adds a mic to every `itemPicker` where the browser has the
   Web Speech API (no key, no server of ours). An exact catalogue match goes
   straight in; anything else fills the box so the suggestions do the rest.
-  Siri can't reach a web app — see issue #12 for the native half.
+  While it records, a sheet covers the page (rippling orb, waveform, clock,
+  live transcript) so it is never ambiguous whether it's listening. The live
+  state comes from the recogniser's own events — don't add a `getUserMedia`
+  level meter, iOS drops recognition when a second stream opens the mic.
+  Siri is out of scope by decision, not by oversight.
 - `SEED` stocks a new account. Older accounts get the additions from a
   Settings button (`missingSeed`) rather than silently on boot, so an item
   someone deleted doesn't creep back.
@@ -225,7 +241,7 @@ variables.
 - `#E5484D` stays reserved for destructive actions and errors.
 - `--ok:#8FAE72` is used for **exactly one thing**: a ticked shopping line.
   Don't spend it on anything else.
-- Aisles are plain uppercase rules, not colours. Ten coloured headers would be
+- Aisles (categories) are plain uppercase rules, not colours. Ten coloured headers would be
   noise, and the list is read while walking.
 
 Flex rows that hold text must set `min-width:0` (and ellipsis the label) —
