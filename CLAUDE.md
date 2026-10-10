@@ -64,8 +64,31 @@ migration `kitchen_app_schema`). Schema changes: apply via the Supabase MCP
   deleting a catalogue entry must never blank an ingredient in a saved recipe.
 - `mp_basket` — what you've decided to cook. Primary key `(user_id, recipe_id)`,
   so adding the same recipe twice is idempotent. `servings` is what you want
-  this week, which may differ from the recipe's base.
-- `mp_extras` — things no recipe asked for (bin bags, coffee).
+  this week, which may differ from the recipe's base. `have text[]` holds the
+  `lower(name)`s of that recipe's ingredients you already have at home
+  (`haveSheet`); they stay off the list, and go when the entry does.
+- `mp_lists` + `mp_list_items` — **baskets** in the UI: named sets of
+  groceries that aren't a recipe ("Weekly staples", "BBQ Saturday"). Called
+  *lists* in code because `mp_basket` already means the meal plan — keep the
+  two words apart. `active` = on this week's shopping list; items are shaped
+  like `mp_recipe_items` (name denormalised) and are never scaled. The Plan
+  tab's Clear switches baskets off rather than deleting them.
+- `mp_sources` — the places you get things (a supermarket, the laiki, a
+  relative's house), edited in Settings. `mp_items.source_id` and
+  `mp_lists.source_id` point at one (nullable, `on delete set null`). A line's
+  place is its item's; failing that, the active basket's it came from. The
+  Shop tab's chips filter by place (per device, `kitchen_source`), and a
+  filtered list **keeps lines with no place** — they can be bought anywhere.
+  **No place names ship in the code**: they're personal and this repo is
+  public. A new account starts with none.
+- `mp_extras` — things no recipe asked for (bin bags, coffee). This *is* the
+  "manually added line" on the Shop tab — there is no second kind.
+- `mp_aisles` — your shop categories: `key`, `name` (null = the built-in label,
+  translated), `pos`. **No rows means the built-in `AISLES` walk.** Every edit
+  upserts the whole list (`saveAisles`), so the first edit materialises it.
+  `mp_items.aisle` / `mp_extras.aisle` hold the `key`; an unknown key reads as
+  `other`, which always exists and is always last. Deleting a category moves
+  its items to `other` first.
 
 RLS on every `mp_*` table: `user_id = auth.uid()`. The publishable key in the
 HTML is meant to be public. Nothing here is reachable by `anon`.
@@ -131,17 +154,22 @@ This repo is **public** (required for free GitHub Pages). So:
 
 ## How the shopping list is computed (`shopList`)
 
-1. Each basket recipe is scaled by `basket.servings / recipe.servings`.
+1. Each basket recipe is scaled by `basket.servings / recipe.servings`, and
+   any ingredient in that entry's `have` is skipped — per recipe, so having
+   the oil for one dish doesn't take it off another's.
 2. Ingredient lines are merged by `lower(name)` across every recipe.
 3. Quantities are summed **per unit family**. Only mass (`g`/`kg`) and volume
    (`ml`/`l`) convert — see `FAM`. Everything else (tbsp, cloves, tins,
    bunches) is summed per exact unit and rendered side by side: "Garlic —
    2 cloves + 1 tbsp". **Do not invent conversions between those.** There isn't
    one, and a wrong number on a shopping list is worse than two right ones.
+3½. Items of every active basket (`mp_lists.active`) join the same merge,
+   unscaled, credited to the basket's name.
 4. Ingredients with no quantity ("salt", "olive oil") still appear, without a
    number.
-5. Lines are grouped into `AISLES`, whose order is the walk through the shop,
-   not the alphabet.
+5. Lines are grouped by `aisles()` — your `mp_aisles` order, or `AISLES` if
+   you've never changed it. The order is the walk through the shop, not the
+   alphabet.
 
 Ticked-off state lives in `localStorage` (`kitchen_checked`), not the database —
 it's per-shop and disposable, and a table would cost a round trip per tap.
@@ -168,8 +196,13 @@ Mirrors Ledger's and Overtime's conventions:
   Session in `localStorage` under the **shared** key — see below.
 - Views: `renderRecipes` (cards, with a +/✓ that adds to the plan without
   opening the recipe), `renderRecipe` (detail, ingredients scaled by a servings
-  stepper), `renderForm` (add/edit), `renderPlan`, `renderShop`,
+  stepper), `renderForm` (add/edit), `renderPlan`, `renderShop` (with
+  `renderOrganise` behind its sort icon: rename/reorder/add/delete categories
+  and move any line to another category — separate from the tick list so a
+  stray tap mid-shop never moves the milk; a move patches the `mp_items` row so
+  it sticks),
   `renderSettings` (ingredient catalogue + aisles, `appSwitcher()`, sign out),
+  `renderListForm` (a basket; opened from `basketSection` on the Plan tab),
   `renderCook`.
 - `appSwitcher()` is the door to the sibling apps — plain `<a href="../ledger/">`
   links styled as secondary buttons by the one `.btnrow a` rule. A shared door,
@@ -187,7 +220,11 @@ Mirrors Ledger's and Overtime's conventions:
 - `voiceButton` adds a mic to every `itemPicker` where the browser has the
   Web Speech API (no key, no server of ours). An exact catalogue match goes
   straight in; anything else fills the box so the suggestions do the rest.
-  Siri can't reach a web app — see issue #12 for the native half.
+  While it records, a sheet covers the page (rippling orb, waveform, clock,
+  live transcript) so it is never ambiguous whether it's listening. The live
+  state comes from the recogniser's own events — don't add a `getUserMedia`
+  level meter, iOS drops recognition when a second stream opens the mic.
+  Siri is out of scope by decision, not by oversight.
 - `SEED` stocks a new account. Older accounts get the additions from a
   Settings button (`missingSeed`) rather than silently on boot, so an item
   someone deleted doesn't creep back.
@@ -201,6 +238,46 @@ Mirrors Ledger's and Overtime's conventions:
 - Cook mode takes a Screen Wake Lock so the phone doesn't sleep on step 3 with
   wet hands. Locks are dropped when the page hides, so `visibilitychange`
   re-acquires it.
+
+## Importing a recipe (`renderImport`)
+
+Two ways in, one parser, and **nothing is written until you press Save**: the
+result becomes `S.draft` and opens in the ordinary recipe form, which is the
+preview.
+
+- **From a link** → the Edge Function `recipe-import`
+  (`supabase/functions/recipe-import/index.ts`, deploy it with the Supabase
+  MCP `deploy_edge_function`; the file is the source of truth). It fetches the
+  page with its own honest user agent and returns the page's schema.org
+  `Recipe` object (trimmed), or the page's plain text if there isn't one. It
+  does no parsing of its own.
+  - **Auth is done inside the function** (`signedIn`, which asks Supabase Auth
+    about the bearer token), and it is deployed with `verify_jwt: false` on
+    purpose. The gateway's check lets the publishable key through, and that
+    key is public in this repo, so relying on it would make the function an
+    open proxy. Don't "fix" this by turning `verify_jwt` back on and dropping
+    `signedIn`.
+  - Refuses non-http(s), odd ports, credentials in URLs, localhost/`.local`,
+    and anything resolving to a private address; follows at most 5 redirects,
+    re-checking each; 10 s timeout, 3 MB cap.
+  - A site that blocks it (e.g. a Cloudflare challenge) gets `{error:'blocked'}`
+    and the app says to paste the text instead. **Never add anything that
+    impersonates a browser or solves challenges** to get round that.
+    akispetretzikis.com works with the honest fetch as of 2026-09.
+- **Paste the text** → `fromText`: headings in either language (Υλικά /
+  Ingredients, Εκτέλεση / Method…) split the sections; without headings each
+  line is sorted by its shape. Lines ending in `:` are sub-headings; comments /
+  related-links headings end the read.
+
+Both end in `draftFromImport`: `parseIngredient` (quantity incl. ½ and 1 1/2,
+Greek and English unit words mapped onto the app's own units, notes and
+parentheses dropped) then `matchItem`, which compares words by `fold`
+sound-key with room for Greek case/plural endings, in any order. The most
+specific catalogue name wins; failing that, a line that says less than a
+catalogue name ("πιπέρι") takes the shortest name containing it. Unmatched
+lines are tagged **new** in the form; tapping any imported name swaps in an
+`itemPicker` to re-match it. Heuristics are allowed to be wrong because the
+preview shows the original line under each one.
 
 ## YouTube
 
@@ -225,7 +302,7 @@ variables.
 - `#E5484D` stays reserved for destructive actions and errors.
 - `--ok:#8FAE72` is used for **exactly one thing**: a ticked shopping line.
   Don't spend it on anything else.
-- Aisles are plain uppercase rules, not colours. Ten coloured headers would be
+- Aisles (categories) are plain uppercase rules, not colours. Ten coloured headers would be
   noise, and the list is read while walking.
 
 Flex rows that hold text must set `min-width:0` (and ellipsis the label) —
@@ -245,8 +322,9 @@ Deliberately left out of v1, in rough order of what's worth doing next:
 - **Dates.** The plan is a basket, not a calendar — "what am I cooking this
   week", not "Tuesday dinner". Adding days means a `date` on `mp_basket` and a
   week grid; the shopping list maths doesn't change.
-- **Pantry stock** ("I already have rice"), which would subtract from the list.
-- **Paste-a-recipe parsing.** A heuristic parser over pasted text, previewing
-  before it writes — the same shape as Overtime's CSV import
-  (`parseCsv` → preview → dedupe). An LLM version goes in an Edge Function, per
-  the privacy invariants above.
+- **Standing pantry stock** — a remembered "always have salt" that applies to
+  every recipe. What exists is per plan entry (`haveSheet`, asked right after
+  adding — never before, so the card's + stays one tap).
+- **An LLM pass over imports**, for pages with no structured data. It would
+  go in an Edge Function with the key as a secret, per the privacy invariants
+  above.
