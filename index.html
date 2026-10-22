@@ -1200,12 +1200,23 @@ function itemPicker(placeholder, onPick){
    Absent in Firefox and patchy in iOS Home Screen apps, so the button only
    exists where the API does. Recognises in the phone's language. */
 const SpeechRec=window.SpeechRecognition||window.webkitSpeechRecognition||null;
+/* One recogniser for the whole page, reused by every mic. iOS Safari lets the
+   first instance have the mic and then lets later new ones fail silently — no
+   error, no end — until the app is reopened. Reusing it avoids that; if it
+   does wedge, dropRecognizer() throws it away and the next tap gets a new one. */
+let recognizer=null;
+function getRecognizer(){ if(!recognizer) recognizer=new SpeechRec(); return recognizer; }
+function dropRecognizer(){
+  const r=recognizer; recognizer=null; if(!r) return;
+  r.onaudiostart=r.onspeechstart=r.onspeechend=r.onresult=r.onerror=r.onend=null;
+  try{ r.abort(); }catch(e){}
+}
 function voiceButton(onHeard){
   if(!SpeechRec) return null;
-  let rec=null;
+  let halt=null;
   const btn=el('button',{type:'button', class:'mic', 'aria-label':t('Say an ingredient'),
     onmousedown:e=>e.preventDefault(),
-    onclick:()=>{ if(rec) rec.stop(); else listen(); }});
+    onclick:()=>{ if(halt) halt('stop'); else listen(); }});
   btn.append(icon('mic'));
 
   /* While the mic is open a sheet covers the page, so there is never any doubt
@@ -1213,7 +1224,7 @@ function voiceButton(onHeard){
      events (audiostart / speechstart) rather than a second getUserMedia
      stream — iOS drops recognition when something else opens the mic. */
   function listen(){
-    let final='', interim='', cancelled=false, started=Date.now(), tick=null;
+    let final='', interim='', cancelled=false, ended=false, started=Date.now(), tick=null, endWait=null, rec=null;
     const status=el('div',{class:'st', 'aria-live':'polite'}, t('Starting the microphone…'));
     const clock=el('span',{class:'clock'},'0:00');
     const heard=el('div',{class:'heard'});
@@ -1227,37 +1238,19 @@ function voiceButton(onHeard){
         el('div',{class:'wave'}, [0,1,2,3,4,5,6,7,8].map(i=>el('b',{style:'animation-delay:-'+((i*0.37)%1.1).toFixed(2)+'s'}))),
         status, heard,
         el('div',{class:'btnrow'},
-          el('button',{type:'button', onclick:()=>{ cancelled=true; try{ rec&&rec.abort(); }catch(e){} }}, t('Cancel')),
-          el('button',{type:'button', class:'pri', onclick:()=>{ try{ rec&&rec.stop(); }catch(e){} }}, t('Done')))));
-    ui.onclick=e=>{ if(e.target===ui){ cancelled=true; try{ rec&&rec.abort(); }catch(x){} } };
-    const onKey=e=>{ if(e.key==='Escape'){ cancelled=true; try{ rec&&rec.abort(); }catch(x){} } };
+          el('button',{type:'button', onclick:()=>halt('abort')}, t('Cancel')),
+          el('button',{type:'button', class:'pri', onclick:()=>halt('stop')}, t('Done')))));
+    ui.onclick=e=>{ if(e.target===ui) halt('abort'); };
+    const onKey=e=>{ if(e.key==='Escape') halt('abort'); };
     paintHeard();
 
     const finish=()=>{
-      clearInterval(tick); document.removeEventListener('keydown', onKey);
-      rec=null; btn.classList.remove('on');
+      clearInterval(tick); clearTimeout(endWait); document.removeEventListener('keydown', onKey);
+      halt=null; btn.classList.remove('on');
       ui.classList.add('out'); setTimeout(()=>ui.remove(), 190);
     };
-    rec=new SpeechRec();
-    rec.lang=LANG==='el' ? 'el-GR' : (navigator.language||'en-GB');
-    rec.interimResults=true; rec.continuous=false; rec.maxAlternatives=1;
-    rec.onaudiostart=()=>{
-      started=Date.now(); ui.classList.add('live'); fill(status, t('Listening…'));
-      try{ navigator.vibrate && navigator.vibrate(12); }catch(e){}
-    };
-    rec.onspeechstart=()=>{ ui.classList.add('live','speaking'); fill(status, t('Hearing you…')); };
-    rec.onspeechend=()=>{ ui.classList.remove('speaking'); fill(status, t('Got it…')); };
-    rec.onresult=e=>{
-      final=''; interim='';
-      for(let i=0;i<e.results.length;i++){ const r=e.results[i];
-        if(r.isFinal) final+=r[0].transcript; else interim+=r[0].transcript; }
-      final=final.trim(); interim=interim.trim(); paintHeard();
-    };
-    rec.onerror=e=>{
-      if(e.error==='not-allowed'||e.error==='service-not-allowed'){ cancelled=true; toast(t('Microphone access is off for this site.')); }
-      else if(e.error!=='no-speech'&&e.error!=='aborted') toast(t('Didn’t catch that.'));
-    };
-    rec.onend=()=>{
+    const end=()=>{
+      if(ended) return; ended=true;
       finish();
       if(cancelled) return;
       /* Safari and Chrome both like to add a full stop and a capital. A Done
@@ -1265,13 +1258,52 @@ function voiceButton(onHeard){
       const said=(final||interim).trim().replace(/[.!?,]+$/,'');
       if(said) onHeard(said.charAt(0).toUpperCase()+said.slice(1));
     };
+    /* Done / Cancel. If the engine never answers with its end event — the
+       wedged-iOS case — close anyway and replace the recogniser. */
+    halt=how=>{
+      if(how==='abort') cancelled=true;
+      try{ rec&&rec[how](); }catch(e){}
+      clearTimeout(endWait);
+      endWait=setTimeout(()=>{ if(!ended){ dropRecognizer(); end(); } }, 2000);
+    };
+    const wire=sr=>{
+      sr.lang=LANG==='el' ? 'el-GR' : (navigator.language||'en-GB');
+      sr.interimResults=true; sr.continuous=false; sr.maxAlternatives=1;
+      sr.onaudiostart=()=>{
+        started=Date.now(); ui.classList.add('live'); fill(status, t('Listening…'));
+        try{ navigator.vibrate && navigator.vibrate(12); }catch(e){}
+      };
+      sr.onspeechstart=()=>{ ui.classList.add('live','speaking'); fill(status, t('Hearing you…')); };
+      sr.onspeechend=()=>{ ui.classList.remove('speaking'); fill(status, t('Got it…')); };
+      sr.onresult=e=>{
+        final=''; interim='';
+        for(let i=0;i<e.results.length;i++){ const r=e.results[i];
+          if(r.isFinal) final+=r[0].transcript; else interim+=r[0].transcript; }
+        final=final.trim(); interim=interim.trim(); paintHeard();
+      };
+      sr.onerror=e=>{
+        if(e.error==='not-allowed'||e.error==='service-not-allowed'){ cancelled=true; toast(t('Microphone access is off for this site.')); }
+        else if(e.error!=='no-speech'&&e.error!=='aborted') toast(t('Didn’t catch that.'));
+        /* A broken audio session can stick to the instance; start the next
+           try from a clean one. */
+        if(e.error==='audio-capture'||e.error==='network'){ dropRecognizer(); end(); }
+      };
+      sr.onend=end;
+      return sr;
+    };
     /* A focused input would keep the keyboard up over the sheet. */
     if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
     document.body.append(ui); btn.classList.add('on');
     document.addEventListener('keydown', onKey);
     tick=setInterval(()=>{ const s=Math.floor((Date.now()-started)/1000);
       clock.textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }, 250);
-    try{ rec.start(); }catch(err){ finish(); }
+    try{ rec=wire(getRecognizer()); rec.start(); }
+    catch(err){
+      /* Usually "already started": the last session never reported its end.
+         Throw that recogniser away and try once more with a fresh one. */
+      dropRecognizer();
+      try{ rec=wire(getRecognizer()); rec.start(); }catch(e2){ dropRecognizer(); finish(); toast(t('Didn’t catch that.')); }
+    }
   }
   return btn;
 }
