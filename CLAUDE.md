@@ -23,7 +23,9 @@ database — there is no separate test backend.
 ## Deployment
 
 GitHub Pages from `main`, repo root → `https://costgal.github.io/kitchen/`.
-Pushing to `main` deploys (takes ~1 min). All asset URLs must stay **relative**
+Pushing to `main` deploys (takes ~1 min). **Bump `APP_VERSION`** (top of the
+script) with every change that goes to `main` — it's shown at the foot of
+Settings, and it's the only way to tell whether a phone has picked up a deploy. All asset URLs must stay **relative**
 (`manifest.json`, not `/manifest.json`) because the site lives under `/kitchen/`.
 
 ### Beta and sandbox are separate
@@ -173,6 +175,12 @@ This repo is **public** (required for free GitHub Pages). So:
 
 Ticked-off state lives in `localStorage` (`kitchen_checked`), not the database —
 it's per-shop and disposable, and a table would cost a round trip per tap.
+
+**Clear ticked** (under the list, `clearTicked`) is the one place a tick
+reaches the database: a ticked one-off (`mp_extras`) is deleted; a ticked recipe
+ingredient goes into that plan entry's `have`, so it returns when the recipe is
+planned again; a ticked basket line is only unticked, because baskets are
+standing sets. Reset just unticks everything.
 
 How mass and volume *read* is a per-device preference (`kitchen_units`: Auto,
 g/kg, ml/l), applied only in `fmtAmount`. Storage and summing stay in g / ml.
