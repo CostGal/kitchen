@@ -224,6 +224,10 @@ Mirrors Ledger's and Overtime's conventions:
   live transcript) so it is never ambiguous whether it's listening. The live
   state comes from the recogniser's own events — don't add a `getUserMedia`
   level meter, iOS drops recognition when a second stream opens the mic.
+  There is **one recogniser per page** (`getRecognizer`), reused by every mic:
+  iOS lets a fresh `SpeechRecognition` fail silently after the first, until the
+  app is reopened. If it wedges anyway (no `end` within 2 s of Done/Cancel),
+  `dropRecognizer` discards it and the next tap starts clean.
   Siri is out of scope by decision, not by oversight.
 - `SEED` stocks a new account. Older accounts get the additions from a
   Settings button (`missingSeed`) rather than silently on boot, so an item
