@@ -338,6 +338,9 @@
    (entry_types/logs/reflections) and Overtime (ot_*). Every table here is
    prefixed mp_ so the three can never collide. The key is publishable; RLS
    (user_id = auth.uid()) on every mp_* table is the real gate. */
+/* Shown at the foot of Settings, so you can tell whether the phone has picked
+   up the latest deploy. Bump it with every change that goes to main. */
+const APP_VERSION='1.1';
 const SB_URL='https://dgnxbcoxdpdloplkcmzs.supabase.co';
 const SB_KEY='sb_publishable_kXCrlX-9S1ud3bs9Zdyt1A_9n-U1X1F';
 /* ---------- shared session (Ledger · Overtime · Kitchen) ---------- */
@@ -391,6 +394,10 @@ const EL={
   'Nothing planned. Go to ':'Τίποτα στο πλάνο. Πήγαινε στις ',
   ' and tap + on whatever you fancy this week — the shopping list builds itself.':' και πάτα + σε ό,τι σου κάνει κέφι αυτή την εβδομάδα — η λίστα για ψώνια φτιάχνεται μόνη της.',
   'Something else…':'Κάτι άλλο…','{n} left':'{n} ακόμα','Reset':'Από την αρχή',
+  'Clear {n} ticked thing':'Αφαίρεση {n} τσεκαρισμένου','Clear {n} ticked things':'Αφαίρεση {n} τσεκαρισμένων',
+  'Take {n} ticked thing off the list?':'Να βγει {n} τσεκαρισμένο από τη λίστα;',
+  'Take {n} ticked things off the list?':'Να βγουν {n} τσεκαρισμένα από τη λίστα;',
+  'Kitchen · version {v}':'Kitchen · έκδοση {v}',
   'Nothing to buy. Add recipes to the ':'Τίποτα για αγορά. Βάλε συνταγές στο ',
   ', or type anything you need into the box above.':' ή γράψε ό,τι χρειάζεσαι στο πεδίο από πάνω.',
   'Language':'Γλώσσα','Units':'Μονάδες',
@@ -1081,6 +1088,21 @@ async function delExtra(id){
   try{ await api('mp_extras?id=eq.'+id,{method:'DELETE'}); S.extras=S.extras.filter(x=>x.id!==id); }
   finally{ busy(false); }
 }
+/* "Clear ticked": what you've bought leaves the list. A one-off is deleted; a
+   recipe's ingredient goes into that plan entry's `have`, so it comes back the
+   next time the recipe is planned; a basket line is only unticked — baskets are
+   standing sets, so it's on the next shop again. */
+async function clearTicked(keys){
+  const ks=new Set(keys);
+  for(const x of S.extras.filter(x=>ks.has(norm(x.name)))) await delExtra(x.id);
+  for(const b of S.basket){
+    const have=(b.have||[]).map(norm), add=[];
+    for(const i of ingsOf(b.recipe_id)){ const k=norm(i.name);
+      if(ks.has(k) && have.indexOf(k)<0 && add.indexOf(k)<0) add.push(k); }
+    if(add.length) await setHave(b.recipe_id, have.concat(add));
+  }
+  const set=checked(); ks.forEach(k=>set.delete(k)); setChecked(set);
+}
 async function setExtraReminder(id, when){
   busy(true);
   try{
@@ -1283,7 +1305,7 @@ function voiceButton(onHeard){
       };
       sr.onerror=e=>{
         if(e.error==='not-allowed'||e.error==='service-not-allowed'){ cancelled=true; toast(t('Microphone access is off for this site.')); }
-        else if(e.error!=='no-speech'&&e.error!=='aborted') toast(t('Didn’t catch that.'));
+        else if(e.error!=='no-speech'&&e.error!=='aborted') toast(t('Didn’t catch that.')+' ('+e.error+')');
         /* A broken audio session can stick to the instance; start the next
            try from a clean one. */
         if(e.error==='audio-capture'||e.error==='network'){ dropRecognizer(); end(); }
@@ -1972,6 +1994,15 @@ function renderShop(){
   const total=groups.reduce((n,g)=>n+g.rows.length,0);
   const left=groups.reduce((n,g)=>n+g.rows.filter(r=>!done.has(r.key)).length,0);
   const app=document.getElementById('app');
+  const ticked=set=>groups.flatMap(g=>g.rows.filter(r=>set.has(r.key)).map(r=>r.key));
+  const clearBtn=el('button',{type:'button', onclick:async()=>{
+    const keys=ticked(checked()); if(!keys.length) return;
+    if(!confirm(tn(keys.length,'Take {n} ticked thing off the list?','Take {n} ticked things off the list?'))) return;
+    try{ await clearTicked(keys); render(); }catch(err){ toast(err.message); render(); }
+  }});
+  const paintClear=set=>{ const n=ticked(set).length;
+    if(clearBtn.parentNode) clearBtn.parentNode.style.display=n?'':'none';
+    fill(clearBtn, tn(n,'Clear {n} ticked thing','Clear {n} ticked things')); };
 
   const list=el('div',{});
   groups.forEach(g=>{
@@ -1994,6 +2025,7 @@ function renderShop(){
            half-finished shop back to the top. */
         const c=document.getElementById('shopcount');
         if(c) c.textContent=t('{n} left',{n:groups.reduce((n,g2)=>n+g2.rows.filter(r=>!set.has(r.key)).length,0)});
+        paintClear(set);
       };
       /* One-off items get a visible ×. Long-press was the obvious gesture, but
          iOS Safari fires the system callout instead of contextmenu, which would
@@ -2055,7 +2087,9 @@ function renderShop(){
     total ? el('div',{style:'margin-top:22px'}, list)
           : el('div',{class:'empty'}, t('Nothing to buy. Add recipes to the '), el('b',{style:'color:var(--acc)'}, t('Plan')),
               t(', or type anything you need into the box above.')),
+    total ? el('div',{class:'btnrow', style:'margin-top:18px'}, clearBtn) : null,
     tabbar());
+  paintClear(done);
 }
 
 /* Organise is the Shop tab's other face: the categories in your shop's walk
@@ -2173,6 +2207,7 @@ function renderSettings(){
       el('p',{class:'mut', style:'margin:0 0 14px'}, t('Same account as Ledger and Overtime.')),
       el('div',{class:'btnrow'},
         el('button',{onclick:()=>{ setSess(null); S.ready=false; boot(); }}, t('Sign out')))),
+    el('p',{class:'mut', style:'text-align:center; margin:22px 0 0'}, t('Kitchen · version {v}',{v:APP_VERSION})),
     tabbar());
 }
 
